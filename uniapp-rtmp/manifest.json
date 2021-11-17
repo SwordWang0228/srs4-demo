@@ -1,6 +1,6 @@
 {
     "name" : "rtmp-uniapp-demo",
-    "appid" : "__UNI__45DD9A4",
+    "appid" : "__UNI__8BF6A4B",
     "description" : "",
     "versionName" : "1.0.0",
     "versionCode" : "100",
@@ -47,7 +47,9 @@
             /* ios打包配置 */
             "ios" : {},
             /* SDK配置 */
-            "sdkConfigs" : {}
+            "sdkConfigs" : {
+                "ad" : {}
+            }
         }
     },
     /* 快应用特有相关 */
