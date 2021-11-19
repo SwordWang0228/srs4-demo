@@ -1,25 +1,26 @@
 <template>
-<view class="content">
+	<view class="content">
 		<view class="uni-padding-wrap uni-common-mt">
 			<label>推流：</label>
-			<input :type="text" placeholder="请输入推流地址" :value="tuiliu"/>
-							<button class="btn" @click="start">开始推流</button>
-			<live-pusher id='livePusher' ref="livePusher" class="livePusher"
-				url="rtmp://srs4.duoxing.org/live/livestream" mode="SD" :muted="true" :enable-camera="true"
-				:auto-focus="true" :beauty="1" whiteness="2" aspect="9:16" @statechange="statechange"
-				@netstatus="netstatus" @error="error"></live-pusher>
+			<input type="text" placeholder="请输入推流地址" :value="tuiliu" v-model="tuiliu" @input="tl_input" />
+			<button class="btn" @click="start">开始推流</button>
+			<live-pusher id='livePusher' ref="livePusher" class="livePusher" :url="tuiliu" mode="SD" :muted="true"
+				:enable-camera="true" :auto-focus="true" :beauty="1" whiteness="2" aspect="9:16"
+				@statechange="statechange" @netstatus="netstatus" @error="error"></live-pusher>
 			<view class="uni-flex uni-row">
+				<!-- 				<button @click="b1">b1</button>
+				<button @click="b2">b2</button> -->
 
 				<button class="btn" @click="pause">暂停推流</button>
 				<button class="btn" @click="resume">恢复推流</button>
 				<button class="btn" @click="stop">停止推流</button>
-			</view>	
+			</view>
 			<label style="margin-top: 20;">拉流：</label>
-			<input :type="text" placeholder="请输入拉流地址" :value="laliu"/>
+			<input type="text" placeholder="请输入拉流地址" :value="laliu" v-model="laliu" @input="ll_input" />
 			<button class="btn" @click="btn_la">开始拉流</button>
 			<view>
-				
-				<video id="myVideo" src="rtmp://srs4.duoxing.org/live/livestream" @error="videoErrorCallback"
+
+				<video id="myVideo" autoplay="false" :src="laliu" @error="videoErrorCallback" @progress=""
 					controls></video>
 			</view>
 
@@ -37,34 +38,35 @@
 			return {
 				src: '',
 				context: null,
-				laliu:'rtmp://srs4.duoxing.org/live/livestream',
-				tuiliu:'rtmp://srs4.duoxing.org/live/livestream',
+				laliu: 'rtmp://srs4.duoxing.org/live/livestream',
+				tuiliu: 'rtmp://srs4.duoxing.org/live/livestream',
 			}
 		},
 		onReady: function(res) {
-			// #ifndef MP-ALIPAY
-			this.videoContext = uni.createVideoContext('myVideo')
-			// #endif
 			this.$nextTick(() => {
+				this.videoContext = uni.createVideoContext('myVideo', this)
+				console.log('play:', this.videoContext.src)
 				try {
 					this.context = uni.createLivePusherContext("livePusher", this);
 					this.context.switchCamera() // 摄像头切换（切换为后置）
 					this.context.startPreview() // 摄像头预览 （不加会黑屏）
 				} catch (err) {
 					uni.showToast({
-						title: err,
+						title: '推流初始化错误' + err,
 					})
 				}
 			})
 		},
 		methods: {
 			videoErrorCallback: function(e) {
+				console.log('播放错误', e)
 				uni.showModal({
-					content: e.target.errMsg,
+					content: '播放错误' + e.target.errMsg,
 					showCancel: false
 				})
+
 			},
-	
+
 			statechange(e) {
 				// uni.showToast({
 				//  title: "statechange:" + JSON.stringify(e),
@@ -84,13 +86,13 @@
 				// })
 			},
 			start: function() {
-				this.context.url=this.tuiliu
+				let that = this
 				this.context.start({
 					success: (a) => {
 						uni.showToast({
 							title: "livePusher.start:" + JSON.stringify(a)
 						})
-						console.log("livePusher.start:" + JSON.stringify(a));
+						console.log("livePusher.start:" + JSON.stringify(a), that.context);
 					}
 				});
 			},
@@ -174,15 +176,15 @@
 					}
 				});
 			},
-			btn_la:function(){
+			btn_la: function() {
 				this.videoContext.stop()
-				this.videoContext.src=this.laliu
 				this.videoContext.play()
-			}
+			},
+
 		}
 	}
 </script>
 
 <style lang="less">
-	
+
 </style>

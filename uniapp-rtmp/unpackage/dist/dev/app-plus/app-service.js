@@ -15,7 +15,7 @@ eval("__webpack_require__(/*! uni-pages */ 1);var _App = _interopRequireDefault(
   !*** /Volumes/mac/duoxingwork/srs4-demo/uniapp-rtmp/pages.json ***!
   \*****************************************************************/
 /*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
+/***/ (function(module, exports) {
 
 
 if (typeof Promise !== 'undefined' && !Promise.prototype.finally) {
@@ -33,9 +33,6 @@ if (typeof Promise !== 'undefined' && !Promise.prototype.finally) {
 if (uni.restoreGlobal) {
   uni.restoreGlobal(weex, plus, setTimeout, clearTimeout, setInterval, clearInterval);
 }
-
-__definePage('pages/index/index/index', function () {return Vue.extend(__webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module 'pages/index/index/index.vue?mpType=page'"); e.code = 'MODULE_NOT_FOUND'; throw e; }())).default);});
-__definePage('pages/index/index/index', function () {return Vue.extend(__webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module 'pages/index/index/index.vue?mpType=page'"); e.code = 'MODULE_NOT_FOUND'; throw e; }())).default);});
 
 /***/ }),
 /* 2 */
