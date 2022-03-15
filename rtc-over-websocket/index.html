@@ -8,6 +8,8 @@
 <body>
   <button onclick="start()">Start Comm</button>
   <button onclick="stop()">Stop Comm</button>
+  <br/>
+  <p id="delay">delay:0</p>
 
   <script src="/socket.io/socket.io.js"></script>
   <script type="text/javascript">
@@ -20,10 +22,11 @@
   <script src="xaudio.js"></script>
   <script src="opus.js"></script>
   <script src="libopus.js"></script>
+  <script src="DelayDetection.js"></script>
 
   <script>
 
-    var audioBuffer = new Array();
+    //var audioBuffer = new Array();
     var snCount = 0;
     var socket = io();
 
@@ -62,13 +65,15 @@
 
     var myVar = setInterval(function () { myTimer() }, 1000);
     function myTimer() {
-
-      if (audioBuffer.length != 0) {
-        let audioMsg = { timestamp: getTimestamp(), sn: snCount, data: audioBuffer.shift() }
-        snCount++;
-        socket.emit('audio', audioMsg);
-        console.log(audioMsg);
-      }
+     
+      document.getElementById("delay").innerHTML="delay:"+delayDet.getDelay();
+      
+      // if (audioBuffer.length != 0) {
+      //   let audioMsg = { timestamp: getTimestamp(), sn: snCount, data: audioBuffer.shift() }
+      //   snCount++;
+      //   socket.emit('audio', audioMsg);
+      //   console.log(audioMsg);
+      // }
     }
 
 
@@ -81,9 +86,10 @@
           frameDuration: 20,
           bufferSize: 1024
         },
-      }
+      };
+      var delayDet = new DelayDetection();
       var streamer = new AudioControllerApi.Streamer(defaultConfig,socket);
-      var player = new AudioControllerApi.Player(defaultConfig,socket); 
+      var player = new AudioControllerApi.Player(defaultConfig,socket,delayDet); 
 
 
 

@@ -36,6 +36,12 @@ app.get('/xaudio.js', (req, res) => {
     res.sendFile(__dirname + '/js/xaudio.js');
 });
 
+app.get('/DelayDetection.js', (req, res) => {
+    res.sendFile(__dirname + '/js/DelayDetection.js');
+});
+
+
+
 io.on('connection', (socket) => {
     console.log('a user connected');
     //console.log(__dirname);

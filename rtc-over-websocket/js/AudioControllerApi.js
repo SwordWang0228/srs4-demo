@@ -1,6 +1,7 @@
 //    AudioControllerApi
 
 (function (global) {
+
   var defaultConfig = {
     codec: {
       sampleRate: 24000,
@@ -21,16 +22,16 @@
   });
 
   var AudioControllerApi = global.AudioControllerApi = {
-    Player: function (config, socket) {
+    Player: function (config, socket,delayDet) {
       this.config = config || {};
       this.config.codec = this.config.codec || defaultConfig.codec;
       this.config.server = this.config.server || defaultConfig.server;
       console.log("player samplerate:"+audioContext.sampleRate);
       this.sampler = new Resampler(this.config.codec.sampleRate, audioContext.sampleRate, 1, this.config.codec.bufferSize);
       this.parentSocket = socket;
-
       this.decoder = new OpusDecoder(this.config.codec.sampleRate, this.config.codec.channels);
       this.silence = new Float32Array(this.config.codec.bufferSize);
+      this.delayDet = delayDet;
     },
     Streamer: function (config, socket) {
       navigator.getUserMedia = (navigator.getUserMedia ||
@@ -49,7 +50,7 @@
         navigator.getUserMedia({
           audio: true
         }, function (stream) {
-          // console.log('kkkkk')
+      
           _this.stream = stream;
           _this.audioInput = audioContext.createMediaStreamSource(stream);
           _this.gainNode = audioContext.createGain();
@@ -189,10 +190,19 @@
 
     this.parentSocket.on('audio', function (msg) {
       var b = msg;
-      console.log(msg);
+      var t = Math.floor(msg.timestamp*1000);
+      //console.log("timestamp:"+t+",sn:"+msg.sn);
+      delayDet.updateTimestamp(t, Math.floor(audioContext.currentTime*1000));
 
-      //play and analysis
-      _this.audioQueue.write(_this.decoder.decode_float(msg.data));
+      if(_this.audioQueue.length() < 24000){
+         _this.audioQueue.write(_this.decoder.decode_float(msg.data));
+      }
+      else
+      {
+        console.log("drop audio data!");
+        _this.audioQueue.read(1000);
+        _this.audioQueue.write(_this.decoder.decode_float(msg.data));
+      }
 
     });
 
