@@ -9,7 +9,9 @@
   <button onclick="start()">Start Comm</button>
   <button onclick="stop()">Stop Comm</button>
   <br/>
+  <p id="status">Disconnected</p>
   <p id="delay">delay:0</p>
+  <p id="buffer">buffer len:0</p>
 
   <script src="/socket.io/socket.io.js"></script>
   <script type="text/javascript">
@@ -23,6 +25,8 @@
   <script src="opus.js"></script>
   <script src="libopus.js"></script>
   <script src="DelayDetection.js"></script>
+  <script src="sonic.js"></script>
+
 
   <script>
 
@@ -46,15 +50,17 @@
     // });
 
     function start() {
-      console.log("start!");
+      //console.log("start!");
       //audioBuffer.push(new Int16Array(960));
       streamer.start();
       player.start();
+      document.getElementById("status").innerHTML="Connected";
     }
 
     function stop() {
-      console.log("stop!");
+      //console.log("stop!");
       streamer.stop();
+      document.getElementById("status").innerHTML="Disconnected";
     }
 
     //console.log("timestamp:" + getTimestamp());
@@ -67,6 +73,8 @@
     function myTimer() {
      
       document.getElementById("delay").innerHTML="delay:"+delayDet.getDelay();
+      document.getElementById("buffer").innerHTML="buffer len:"+player.audioQueue.buffer.length;
+      
       
       // if (audioBuffer.length != 0) {
       //   let audioMsg = { timestamp: getTimestamp(), sn: snCount, data: audioBuffer.shift() }

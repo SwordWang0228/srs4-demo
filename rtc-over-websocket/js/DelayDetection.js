@@ -15,7 +15,7 @@ class DelayDetection{
 
         let delay = (dts - this.minDiff) - sts;
  
-        console.log("sts:"+sts+",dts:"+dts+",minDiff:"+this.minDiff+",delay:"+delay);
+        //console.log("sts:"+sts+",dts:"+dts+",minDiff:"+this.minDiff+",delay:"+delay);
 
         if(this.delayArray.length >= 50){
             this.delayArray.shift();

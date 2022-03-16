@@ -28,6 +28,8 @@
       this.config.server = this.config.server || defaultConfig.server;
       console.log("player samplerate:"+audioContext.sampleRate);
       this.sampler = new Resampler(this.config.codec.sampleRate, audioContext.sampleRate, 1, this.config.codec.bufferSize);
+      this.samplerFast = new Resampler(this.config.codec.sampleRate, Math.floor(audioContext.sampleRate*0.8), 1, this.config.codec.bufferSize);
+
       this.parentSocket = socket;
       this.decoder = new OpusDecoder(this.config.codec.sampleRate, this.config.codec.channels);
       this.silence = new Float32Array(this.config.codec.bufferSize);
@@ -149,7 +151,14 @@
 
       write: function (newAudio) {
         var currentQLength = this.buffer.length;
-        newAudio = _this.sampler.resampler(newAudio);
+
+        if(this.buffer.length >= Math.floor(audioContext.sampleRate/2)){
+          newAudio = _this.samplerFast.resampler(newAudio);
+        }else {
+          newAudio = _this.sampler.resampler(newAudio);
+        }
+
+        //newAudio = _this.sampler.resampler(newAudio);
         var newBuffer = new Float32Array(currentQLength + newAudio.length);
         newBuffer.set(this.buffer, 0);
         newBuffer.set(newAudio, currentQLength);
@@ -169,7 +178,7 @@
 
     this.scriptNode = audioContext.createScriptProcessor(this.config.codec.bufferSize, 1, 1);
     this.scriptNode.onaudioprocess = function (e) {
-      if (_this.audioQueue.length()) {
+      if (_this.audioQueue.length()>= _this.config.codec.bufferSize) {
         e.outputBuffer.getChannelData(0).set(_this.audioQueue.read(_this.config.codec.bufferSize));
       } else {
         e.outputBuffer.getChannelData(0).set(_this.silence);
@@ -194,15 +203,15 @@
       //console.log("timestamp:"+t+",sn:"+msg.sn);
       delayDet.updateTimestamp(t, Math.floor(audioContext.currentTime*1000));
 
-      if(_this.audioQueue.length() < 24000){
+      //if(_this.audioQueue.length() < 24000){
          _this.audioQueue.write(_this.decoder.decode_float(msg.data));
-      }
-      else
-      {
-        console.log("drop audio data!");
-        _this.audioQueue.read(1000);
-        _this.audioQueue.write(_this.decoder.decode_float(msg.data));
-      }
+      // }
+      // else
+      // {
+      //   console.log("drop audio data!");
+      //   _this.audioQueue.read(1000);
+      //   _this.audioQueue.write(_this.decoder.decode_float(msg.data));
+      // }
 
     });
 
@@ -243,11 +252,11 @@
     this.gainNode.disconnect();
     this.gainNode = null;
 
-    if (!this.parentSocket) {
-      this.socket.close();
-    } else {
-      this.socket.onmessage = this.parentOnmessage;
-    }
+    // if (!this.parentSocket) {
+    //   this.socket.close();
+    // } else {
+    //   this.socket.onmessage = this.parentOnmessage;
+    // }
 
   };
 })(window);

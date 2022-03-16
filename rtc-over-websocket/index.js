@@ -40,6 +40,9 @@ app.get('/DelayDetection.js', (req, res) => {
     res.sendFile(__dirname + '/js/DelayDetection.js');
 });
 
+app.get('/sonic.js', (req, res) => {
+    res.sendFile(__dirname + '/sonic.js');
+});
 
 
 io.on('connection', (socket) => {
