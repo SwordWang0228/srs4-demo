@@ -5,25 +5,32 @@ class DelayDetection{
         this.delayArray  = new Array();
         this.minDiff = undefined;
     }
-    updateTimestamp(sts,dts){
-        let diff = dts - sts;
+
+    //dts:destination timestamp
+    updateTimestamp(dts,localTimeStamp){
+        let diff = dts - localTimeStamp;
         if(this.minDiff === undefined){
             this.minDiff = diff;
-        }else if(this.minDiff>diff){
+        }else if(Math.abs(this.minDiff)>Math.abs(diff)){
             this.minDiff = diff;
         }
 
-        let delay = (dts - this.minDiff) - sts;
+        let delay = localTimeStamp-dts;
  
-        //console.log("sts:"+sts+",dts:"+dts+",minDiff:"+this.minDiff+",delay:"+delay);
+        //console.log("dts:"+dts+",localTimeStamp:"+localTimeStamp+",minDiff:"+this.minDiff+",delay:"+delay);
 
-        if(this.delayArray.length >= 50){
+        if(this.delayArray.length >= 100){
             this.delayArray.shift();
             this.delayArray.push(delay);
         }else{
             this.delayArray.push(delay);
         }
     }
+
+    getRemoteTime(localTimestamp){
+        return (localTimestamp - this.minDiff);
+    }
+
     getDelay(){
         var sum = 0;
         for(var i = 0;i<this.delayArray.length;i++){

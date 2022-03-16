@@ -9,10 +9,10 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 app.get('/libopus.wasm', (req, res) => {
-    res.sendFile(__dirname + '/libopus.wasm');
+    res.sendFile(__dirname + '/js/libopus.wasm');
 });
 app.get('/libopus.wasm.js', (req, res) => {
-    res.sendFile(__dirname + '/libopus.wasm.js');
+    res.sendFile(__dirname + '/js/libopus.wasm.js');
 });
 
 //add for new try
@@ -41,7 +41,7 @@ app.get('/DelayDetection.js', (req, res) => {
 });
 
 app.get('/sonic.js', (req, res) => {
-    res.sendFile(__dirname + '/sonic.js');
+    res.sendFile(__dirname + '/js/sonic.js');
 });
 
 
@@ -51,14 +51,14 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('user disconnected');
     });
-    socket.on('chat message', (msg) => {
-        console.log('message: ' + msg);
-        socket.broadcast.emit('chat message',msg);
-    });
     socket.on('audio', (msg) => {
-        //console.log('recieve a audio message!');
-        
-        socket.broadcast.emit('audio',msg);
+        socket.broadcast.emit('audio', msg);
+    });
+    socket.on('SyncReqest', (msg) => {
+        socket.broadcast.emit('SyncReqest', msg);
+    });
+    socket.on('SyncResponse', (msg) => {
+        socket.broadcast.emit('SyncResponse', msg);
     });
 });
 

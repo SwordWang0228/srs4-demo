@@ -1,4 +1,4 @@
-//    AudioControllerApi
+//AudioControllerApi
 
 (function (global) {
 
@@ -29,13 +29,13 @@
       console.log("player samplerate:"+audioContext.sampleRate);
       this.sampler = new Resampler(this.config.codec.sampleRate, audioContext.sampleRate, 1, this.config.codec.bufferSize);
       this.samplerFast = new Resampler(this.config.codec.sampleRate, Math.floor(audioContext.sampleRate*0.8), 1, this.config.codec.bufferSize);
-
+      this.samplerSlow = new Resampler(this.config.codec.sampleRate, Math.floor(audioContext.sampleRate*1.2), 1, this.config.codec.bufferSize);
       this.parentSocket = socket;
       this.decoder = new OpusDecoder(this.config.codec.sampleRate, this.config.codec.channels);
       this.silence = new Float32Array(this.config.codec.bufferSize);
       this.delayDet = delayDet;
     },
-    Streamer: function (config, socket) {
+    Streamer: function (config, socket,delayDet) {
       navigator.getUserMedia = (navigator.getUserMedia ||
         navigator.webkitGetUserMedia ||
         navigator.mozGetUserMedia ||
@@ -47,6 +47,7 @@
       this.parentSocket = socket;
       this.encoder = new OpusEncoder(this.config.codec.sampleRate, this.config.codec.channels, this.config.codec.app, this.config.codec.frameDuration);
       var _this = this;
+      this.delayDet = delayDet;
 
       this._makeStream = function (onError) {
         navigator.getUserMedia({
@@ -58,18 +59,14 @@
           _this.gainNode = audioContext.createGain();
           _this.recorder = audioContext.createScriptProcessor(_this.config.codec.bufferSize, 1, 1);
 
-          //编码
+          //encode
           _this.recorder.onaudioprocess = function (e) {
-            //console.log('onaudioprocess')
             var resampled = _this.sampler.resampler(e.inputBuffer.getChannelData(0));
-            //console.log('resampled', resampled)
             var packets = _this.encoder.encode_float(resampled);
-            //console.log(packets); 
             for (var i = 0; i < packets.length; i++) {
-              let audioMsg = { timestamp: audioContext.currentTime, sn: snCount, data: packets[i] }
+              let audioMsg = { timestamp: delayDet.getRemoteTime(getTimestamp()), sn: snCount, data: packets[i] }
               snCount++;
               socket.emit('audio', audioMsg);
-              //audioContext.currentTime
             }
           };
 
@@ -85,26 +82,6 @@
     var _this = this;
     this._makeStream(onError);
 
- 
-    // this.socket.onclose = function (event) {
-    //   if (_onclose) {
-    //     _onclose(event);
-    //   }
-    //   if (_this.audioInput) {
-    //     _this.audioInput.disconnect();
-    //     _this.audioInput = null;
-    //   }
-    //   if (_this.gainNode) {
-    //     _this.gainNode.disconnect();
-    //     _this.gainNode = null;
-    //   }
-    //   if (_this.recorder) {
-    //     _this.recorder.disconnect();
-    //     _this.recorder = null;
-    //   }
-    //   _this.stream.getTracks()[0].stop();
-    //   console.log('Disconnected from server', event.reason);
-    // };
   };
 
   AudioControllerApi.Streamer.prototype.mute = function () {
@@ -151,13 +128,23 @@
 
       write: function (newAudio) {
         var currentQLength = this.buffer.length;
+        //console.log("delay:" +avgDelay);
+        var len;
+        
+        if(avgDelay < 15){
+          len = (audioContext.sampleRate/20)*3;
+        }else if(avgDelay < 25){
+          len = (audioContext.sampleRate/10)*3;
+        }else{
+          len = (audioContext.sampleRate/2);
+        }
+        console.log("len:"+len);
 
-        if(this.buffer.length >= Math.floor(audioContext.sampleRate/2)){
+        if(this.buffer.length >= Math.floor(len)){
           newAudio = _this.samplerFast.resampler(newAudio);
         }else {
           newAudio = _this.sampler.resampler(newAudio);
         }
-
         //newAudio = _this.sampler.resampler(newAudio);
         var newBuffer = new Float32Array(currentQLength + newAudio.length);
         newBuffer.set(this.buffer, 0);
@@ -188,53 +175,11 @@
     this.scriptNode.connect(this.gainNode);
     this.gainNode.connect(audioContext.destination);
 
-    // if (!this.parentSocket) {
-    //   this.socket = new WebSocket(this.config.server);
-    // } else {
-    //   this.socket = this.parentSocket;
-    // }
-    //this.socket.onopen = function () {
-    //    console.log('Connected to server ' + _this.config.server.host + ' as listener');
-    //};
-
     this.parentSocket.on('audio', function (msg) {
-      var b = msg;
-      var t = Math.floor(msg.timestamp*1000);
-      //console.log("timestamp:"+t+",sn:"+msg.sn);
-      delayDet.updateTimestamp(t, Math.floor(audioContext.currentTime*1000));
-
-      //if(_this.audioQueue.length() < 24000){
-         _this.audioQueue.write(_this.decoder.decode_float(msg.data));
-      // }
-      // else
-      // {
-      //   console.log("drop audio data!");
-      //   _this.audioQueue.read(1000);
-      //   _this.audioQueue.write(_this.decoder.decode_float(msg.data));
-      // }
-
+      delayDet.updateTimestamp(msg.timestamp, getTimestamp());
+      _this.audioQueue.write(_this.decoder.decode_float(msg.data));
     });
 
-    // var _onmessage = this.parentOnmessage = this.socket.onmessage;
-    // this.socket.onmessage = function (message) {
-    //   if (_onmessage) {
-    //     _onmessage(message);
-    //   }
-    //   if (message.data instanceof Blob) {
-    //     var reader = new FileReader();
-    //     //解码
-    //     reader.onload = function () {
-    //       _this.audioQueue.write(_this.decoder.decode_float(reader.result));
-    //     };
-    //     reader.readAsArrayBuffer(message.data);
-    //   }
-    // };
-    //this.socket.onclose = function () {
-    //    console.log('Connection to server closed');
-    //};
-    //this.socket.onerror = function (err) {
-    //    console.log('Getting audio data error:', err);
-    //};
   };
 
   AudioControllerApi.Player.prototype.getVolume = function () {
@@ -251,12 +196,8 @@
     this.scriptNode = null;
     this.gainNode.disconnect();
     this.gainNode = null;
-
-    // if (!this.parentSocket) {
-    //   this.socket.close();
-    // } else {
-    //   this.socket.onmessage = this.parentOnmessage;
-    // }
+  
+    //close socket ?
 
   };
 })(window);

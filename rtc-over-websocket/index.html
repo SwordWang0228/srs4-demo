@@ -8,172 +8,101 @@
 <body>
   <button onclick="start()">Start Comm</button>
   <button onclick="stop()">Stop Comm</button>
-  <br/>
+  <br />
   <p id="status">Disconnected</p>
   <p id="delay">delay:0</p>
   <p id="buffer">buffer len:0</p>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script type="text/javascript">
+  <!-- <script type="text/javascript">
     LIBOPUS_WASM_URL = "libopus.wasm";
   </script>
-  <script type="text/javascript" src="libopus.wasm.js"></script>
+  <script type="text/javascript" src="libopus.wasm.js"></script> -->
 
-  <!-- for new try -->
   <script src="AudioControllerApi.js"></script>
   <script src="xaudio.js"></script>
   <script src="opus.js"></script>
   <script src="libopus.js"></script>
   <script src="DelayDetection.js"></script>
-  <script src="sonic.js"></script>
+  <!-- <script src="sonic.js"></script> -->
 
 
   <script>
 
-    //var audioBuffer = new Array();
     var snCount = 0;
     var socket = io();
+    var SyncTimer;
+    var isStream = false;
+    var isPlaying = false;
+    var avgDelay = 0;
 
-    // socket.on('chat message', function (msg) {
-    //   var item = document.createElement('li');
-    //   item.textContent = msg;
-    //   messages.appendChild(item);
-    //   window.scrollTo(0, document.body.scrollHeight);
-    // });
+    //get pcm and encode
+    var defaultConfig = {
+      codec: {
+        sampleRate: 8000,
+        channels: 1,
+        app: 2048,
+        frameDuration: 20,
+        bufferSize: 1024
+      },
+    };
+    var delayDet = new DelayDetection();
+    var streamer = new AudioControllerApi.Streamer(defaultConfig, socket, delayDet);
+    var player = new AudioControllerApi.Player(defaultConfig, socket, delayDet);
 
-    // socket.on('audio', function (msg) {
-    //   var b = msg;
-    //   console.log(msg);
+    socket.on('SyncReqest', function (msg) {
+      console.log("RevSyncSyncReqest:" + msg.timestamp);
+      let syncRespone = { timestamp: getTimestamp() }
+      socket.emit('SyncResponse', syncRespone);
 
-    //   //play and analysis
-
-    // });
+      delayDet.updateTimestamp(msg.timestamp, getTimestamp());
+      if (isStream == false) {
+        streamer.start();
+        isStream = true;
+      }
+    });
+    socket.on('SyncResponse', function (msg) {
+      console.log("RevSyncResponse:" + msg.timestamp);
+      clearInterval(SyncTimer);
+      delayDet.updateTimestamp(msg.timestamp, getTimestamp());
+      if (isPlaying == false) {
+        player.start();
+        isPlaying = true;
+      }
+      document.getElementById("status").innerHTML = "Connected";
+    });
 
     function start() {
-      //console.log("start!");
-      //audioBuffer.push(new Int16Array(960));
-      streamer.start();
-      player.start();
-      document.getElementById("status").innerHTML="Connected";
+      SyncTimer = setInterval(function () { sendSyncReqest() }, 1000);
     }
 
     function stop() {
-      //console.log("stop!");
       streamer.stop();
-      document.getElementById("status").innerHTML="Disconnected";
+      player.stop();
+      isStream = false;
+      isPlaying = false;
+      document.getElementById("status").innerHTML = "Disconnected";
     }
-
-    //console.log("timestamp:" + getTimestamp());
 
     function getTimestamp() {
       return Date.now();
     }
 
-    var myVar = setInterval(function () { myTimer() }, 1000);
-    function myTimer() {
-     
-      document.getElementById("delay").innerHTML="delay:"+delayDet.getDelay();
-      document.getElementById("buffer").innerHTML="buffer len:"+player.audioQueue.buffer.length;
-      
-      
-      // if (audioBuffer.length != 0) {
-      //   let audioMsg = { timestamp: getTimestamp(), sn: snCount, data: audioBuffer.shift() }
-      //   snCount++;
-      //   socket.emit('audio', audioMsg);
-      //   console.log(audioMsg);
-      // }
+    function sendSyncReqest() {
+      let syncReqest = { timestamp: getTimestamp() }
+      socket.emit('SyncReqest', syncReqest);
+      console.log("SendSyncReqest:" + syncReqest.timestamp);
     }
 
+    var myVar = setInterval(function () { myTimer() }, 1000);
+    function myTimer() {
+      avgDelay = delayDet.getDelay();
+      document.getElementById("delay").innerHTML = "delay:" + avgDelay;
+      if (isPlaying == true) {
+        document.getElementById("buffer").innerHTML = "buffer len:" + player.audioQueue.buffer.length;
+      }
 
-    //get pcm and encode
-    var defaultConfig = {
-        codec: {
-          sampleRate: 8000,
-          channels: 1,
-          app: 2048,
-          frameDuration: 20,
-          bufferSize: 1024
-        },
-      };
-      var delayDet = new DelayDetection();
-      var streamer = new AudioControllerApi.Streamer(defaultConfig,socket);
-      var player = new AudioControllerApi.Player(defaultConfig,socket,delayDet); 
-
-
-
-
-    // libopus.onload = function () {
-
-    //   var start = new Date().getTime();
-
-    //   var enc = new libopus.Encoder(1, 48000, 24000, 20, false);
-    //   var dec = new libopus.Decoder(1, 48000);
-
-    //   var samples = new Int16Array(48000);
-    //   for (var k = 0; k < 48000; k++)
-    //     samples[k] = Math.random() * 30000;
-
-    //   enc.input(samples);
-
-    //   var data = enc.output();
-    //   var tsize = 0;
-    //   var tsamples = 0;
-    //   while (data) {
-    //     tsize += data.length;
-    //     socket.emit('audio', data);
-
-
-    //     dec.input(data);
-    //     var osamples = dec.output();
-    //     console.log("encoded  " + data.length + " bytes");
-    //     while (osamples) {
-    //       tsamples += osamples.length;
-    //       console.log("decoded " + osamples.length + " samples");
-    //       osamples = dec.output();
-    //     }
-
-    //     data = enc.output();
-    //   }
-
-    //   enc.destroy();
-    //   dec.destroy();
-
-    //   console.log("1s, 48000Hz, random => total encoded size " + tsize + " total decoded samples " + tsamples);
-    //   console.log("time " + (new Date().getTime() - start) + " ms");
-    // }
-
-
-    // function initAudio() {
-    //   // 获取web 声音
-    //   var audioBuffer = new Array();
-    //   audioBuffer[0] = new Int16Array(960);
-    //   audioBuffer[1] = new Int16Array(960);
-    //   audioBuffer[2] = new Int16Array(960);
-    //   audioBuffer[3] = new Int16Array(960);
-    //   audioBuffer[4] = new Int16Array(960);
-    //   console.log(audioBuffer);
-
-    //   var context = new AudioContext();
-    //   constraintsMic = {
-    //     audio: { sampleRate: { ideal: 8000, max: 441000 } },
-    //     video: false
-    //   }
-    //   var stream = navigator.mediaDevices.getUserMedia(constraintsMic).then((stream) => {
-    //     audioInput = context.createMediaStreamSource(stream);
-    //   }).catch((err) => {
-    //     console.log('error');
-    //   });
-    //   recorder = context.createScriptProcessor(4096, 1, 1);
-    //   recorder.onaudioprocess = function (e) {
-    //     // getChannelData返回Float32Array类型的pcm数据
-    //     var data = e.inputBuffer.getChannelData(0);
-    //     console.log(data)
-    //   }
-    // }
-
-
-
-
+    }
 
   </script>
 </body>
