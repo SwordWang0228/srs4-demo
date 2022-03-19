@@ -41,6 +41,9 @@
         navigator.mozGetUserMedia ||
         navigator.msGetUserMedia);
 
+        let supported = navigator.mediaDevices.getSupportedConstraints();
+        console.log(supported)
+
       this.config = config || {};
       this.config.codec = this.config.codec || defaultConfig.codec;
       this.sampler = new Resampler(audioContext.sampleRate, this.config.codec.sampleRate, 1, this.config.codec.bufferSize);
@@ -51,7 +54,14 @@
 
       this._makeStream = function (onError) {
         navigator.getUserMedia({
-          audio: true
+          audio: {
+            latency: true,
+            noiseSuppression: true,
+            autoGainControl:true,
+            echoCancellation: true
+          },
+          video :false
+      
         }, function (stream) {
 
           _this.stream = stream;
