@@ -22,20 +22,20 @@
   });
 
   var AudioControllerApi = global.AudioControllerApi = {
-    Player: function (config, socket,delayDet) {
+    Player: function (config, socket, delayDet) {
       this.config = config || {};
       this.config.codec = this.config.codec || defaultConfig.codec;
       this.config.server = this.config.server || defaultConfig.server;
-      console.log("player samplerate:"+audioContext.sampleRate);
+      console.log("player samplerate:" + audioContext.sampleRate);
       this.sampler = new Resampler(this.config.codec.sampleRate, audioContext.sampleRate, 1, this.config.codec.bufferSize);
-      this.samplerFast = new Resampler(this.config.codec.sampleRate, Math.floor(audioContext.sampleRate*0.8), 1, this.config.codec.bufferSize);
-      this.samplerSlow = new Resampler(this.config.codec.sampleRate, Math.floor(audioContext.sampleRate*1.2), 1, this.config.codec.bufferSize);
+      this.samplerFast = new Resampler(this.config.codec.sampleRate, Math.floor(audioContext.sampleRate * 0.8), 1, this.config.codec.bufferSize);
+      this.samplerSlow = new Resampler(this.config.codec.sampleRate, Math.floor(audioContext.sampleRate * 1.2), 1, this.config.codec.bufferSize);
       this.parentSocket = socket;
       this.decoder = new OpusDecoder(this.config.codec.sampleRate, this.config.codec.channels);
       this.silence = new Float32Array(this.config.codec.bufferSize);
       this.delayDet = delayDet;
     },
-    Streamer: function (config, socket,delayDet) {
+    Streamer: function (config, socket, delayDet) {
       navigator.getUserMedia = (navigator.getUserMedia ||
         navigator.webkitGetUserMedia ||
         navigator.mozGetUserMedia ||
@@ -53,10 +53,12 @@
         navigator.getUserMedia({
           audio: true
         }, function (stream) {
-      
+
           _this.stream = stream;
           _this.audioInput = audioContext.createMediaStreamSource(stream);
+          // ganiNode https://developer.mozilla.org/en-US/docs/Web/API/GainNode
           _this.gainNode = audioContext.createGain();
+          // 可以用AudioWorkletProcessor代替，https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletNode
           _this.recorder = audioContext.createScriptProcessor(_this.config.codec.bufferSize, 1, 1);
 
           //encode
@@ -130,19 +132,19 @@
         var currentQLength = this.buffer.length;
         //console.log("delay:" +avgDelay);
         var len;
-        
-        if(avgDelay < 15){
-          len = (audioContext.sampleRate/20)*3;
-        }else if(avgDelay < 25){
-          len = (audioContext.sampleRate/10)*3;
-        }else{
-          len = (audioContext.sampleRate/2);
-        }
-        console.log("len:"+len);
 
-        if(this.buffer.length >= Math.floor(len)){
+        if (avgDelay < 15) {
+          len = (audioContext.sampleRate / 20) * 3;
+        } else if (avgDelay < 25) {
+          len = (audioContext.sampleRate / 10) * 3;
+        } else {
+          len = (audioContext.sampleRate / 2);
+        }
+        console.log("len:" + len);
+
+        if (this.buffer.length >= Math.floor(len)) {
           newAudio = _this.samplerFast.resampler(newAudio);
-        }else {
+        } else {
           newAudio = _this.sampler.resampler(newAudio);
         }
         //newAudio = _this.sampler.resampler(newAudio);
@@ -165,7 +167,7 @@
 
     this.scriptNode = audioContext.createScriptProcessor(this.config.codec.bufferSize, 1, 1);
     this.scriptNode.onaudioprocess = function (e) {
-      if (_this.audioQueue.length()>= _this.config.codec.bufferSize) {
+      if (_this.audioQueue.length() >= _this.config.codec.bufferSize) {
         e.outputBuffer.getChannelData(0).set(_this.audioQueue.read(_this.config.codec.bufferSize));
       } else {
         e.outputBuffer.getChannelData(0).set(_this.silence);
@@ -196,7 +198,7 @@
     this.scriptNode = null;
     this.gainNode.disconnect();
     this.gainNode = null;
-  
+
     //close socket ?
 
   };
