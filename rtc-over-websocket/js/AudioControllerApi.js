@@ -140,7 +140,7 @@
         } else {
           len = (audioContext.sampleRate / 2);
         }
-        console.log("len:" + len);
+        //console.log("len:" + len);
 
         if (this.buffer.length >= Math.floor(len)) {
           newAudio = _this.samplerFast.resampler(newAudio);
