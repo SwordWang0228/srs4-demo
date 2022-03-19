@@ -199,54 +199,58 @@
   AudioControllerApi.Player.prototype.start = function () {
     var _this = this;
 
-    this.audioQueue = {
-      buffer: new Float32Array(0),
+
+
+
+    this.auido16BufferQueue = {
+      buffer: new Int16Array(0),
+
+      // float32Array
+
 
       write: function (newAudio) {
         var currentQLength = this.buffer.length;
-        //console.log("delay:" +avgDelay);
-        var len;
 
-        if (avgDelay < 15) {
-          len = (audioContext.sampleRate / 20) * 3;
-        } else if (avgDelay < 25) {
-          len = (audioContext.sampleRate / 10) * 3;
-        } else {
-          len = audioContext.sampleRate / 2;
-        }
-        //console.log("len:" + len);
-
-        // // 调用 sonic 进行变速不变调处理
-        // const sonic = window.Sonic({ sampleRate: 8000 });
-        // sonic.setSpeed(2);
-        // sonic.input(newAudio);
-        // newAudio = sonic.flush();
-
-        // 把 16 位音频转成 32 位 float
-        const size = newAudio.length;
-        let newAudiof32 = new Float32Array(size);
-        for (let i = 0; i < size; i++) {
-          const int = newAudio[i];
-          newAudiof32[i] = int / 32767;
-        }
-
-        // if (this.buffer.length >= Math.floor(len)) {
-        //   newAudio = _this.samplerFast.resampler(newAudio);
-        // } else {
-        newAudiof32 = _this.sampler.resampler(newAudiof32);
-        // }
-
-        //newAudio = _this.sampler.resampler(newAudio);
-        var newBuffer = new Float32Array(currentQLength + newAudiof32.length);
+        var newBuffer = new Int16Array(currentQLength + newAudio.length);
         newBuffer.set(this.buffer, 0);
-        newBuffer.set(newAudiof32, currentQLength);
+        newBuffer.set(newAudio, currentQLength);
         this.buffer = newBuffer;
+
+        if (this.buffer.length > 1600) {
+          // 调用 sonic 进行变速不变调处理
+          const sonic = window.Sonic({ sampleRate: 8000 });
+          sonic.setSpeed(2);
+          sonic.input(this.buffer);
+          this.buffer = sonic.flush();
+          console.log("  if (this.buffer.length > 1600) ");
+        }
+
+
       },
 
       read: function (nSamples) {
+
+        //return Float32Array
+
+        console.log("read:"+ nSamples)
+        var len = nSamples;
+        nSamples = Math.ceil(nSamples / 6);
+
         var samplesToPlay = this.buffer.subarray(0, nSamples);
         this.buffer = this.buffer.subarray(nSamples, this.buffer.length);
-        return samplesToPlay;
+
+        // 把 16 位音频转成 32 位 float
+        const size = samplesToPlay.length;
+        let newAudiof32 = new Float32Array(size);
+        for (let i = 0; i < size; i++) {
+          const int = samplesToPlay[i];
+          newAudiof32[i] = int / 32767;
+        }
+
+        newAudiof32 = _this.sampler.resampler(newAudiof32);
+
+        console.log("read:"+ len+",retrun :"+newAudiof32.length)
+        return newAudiof32;
       },
 
       length: function () {
@@ -260,10 +264,10 @@
       1
     );
     this.scriptNode.onaudioprocess = function (e) {
-      if (_this.audioQueue.length() >= _this.config.codec.bufferSize) {
+      if (_this.auido16BufferQueue.length() >= 0) {
         e.outputBuffer
           .getChannelData(0)
-          .set(_this.audioQueue.read(_this.config.codec.bufferSize));
+          .set(_this.auido16BufferQueue.read(_this.config.codec.bufferSize));
       } else {
         e.outputBuffer.getChannelData(0).set(_this.silence);
       }
@@ -274,7 +278,7 @@
 
     this.parentSocket.on("audio", function (msg) {
       delayDet.updateTimestamp(msg.timestamp, getTimestamp());
-      _this.audioQueue.write(_this.decoder.decode(msg.data));
+      _this.auido16BufferQueue.write(_this.decoder.decode(msg.data));
     });
   };
 
