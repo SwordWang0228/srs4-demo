@@ -156,7 +156,7 @@
             _this.biquadFilter.type = "lowpass";
             _this.biquadFilter.frequency.setValueAtTime(
               4000,
-              audioCtx.currentTime
+              audioContext.currentTime
             );
           },
           onError || _this.onError
