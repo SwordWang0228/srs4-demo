@@ -153,8 +153,8 @@
             _this.recorder.connect(_this.biquadFilter);
             _this.biquadFilter.connect(audioContext.destination);
 
-            this.biquadFilter.type = "lowpass";
-            this.biquadFilter.frequency.setValueAtTime(
+            _this.biquadFilter.type = "lowpass";
+            _this.biquadFilter.frequency.setValueAtTime(
               4000,
               audioCtx.currentTime
             );
