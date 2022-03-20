@@ -243,10 +243,9 @@
       },
 
       read: function (nSamples) {
-
         //return Float32Array
 
-        console.log("read:"+ nSamples)
+        console.log("read:" + nSamples);
         var len = nSamples;
         nSamples = Math.ceil(nSamples / (audioContext.sampleRate / 8000));
 
@@ -263,7 +262,7 @@
 
         newAudiof32 = _this.sampler.resampler(newAudiof32);
 
-        console.log("read:"+ len+",retrun :"+newAudiof32.length)
+        // console.log("read:"+ len+",retrun :"+newAudiof32.length)
         return newAudiof32;
       },
 
