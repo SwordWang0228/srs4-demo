@@ -36,7 +36,7 @@ class DelayDetection {
   }
 
   getRemoteTime(localTimestamp) {
-    return localTimestamp - this.minDiff;
+    return localTimestamp + this.minDiff;
   }
 
   getDelay() {
