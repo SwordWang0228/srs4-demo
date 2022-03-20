@@ -6,32 +6,37 @@ class DelayDetection {
   }
 
   //dts:destination timestamp
-  updateTimestamp(dts, localTimeStamp) {
-    let diff = dts - localTimeStamp;
+  updateTimestamp(sts, dts, localTimeStamp) {
+    let diff = sts - localTimeStamp;
     if (this.minDiff === undefined) {
       this.minDiff = diff;
     } else if (Math.abs(this.minDiff) > Math.abs(diff)) {
       this.minDiff = diff;
     }
 
-    let delay = localTimeStamp - dts;
+    if (dts != undefined) {
 
-    console.log(
-      "dts:" +
-        dts +
-        ",localTimeStamp:" +
-        localTimeStamp +
-        ",minDiff:" +
-        this.minDiff +
-        ",delay:" +
-        delay
-    );
 
-    if (this.delayArray.length >= 100) {
-      this.delayArray.shift();
-      this.delayArray.push(delay);
-    } else {
-      this.delayArray.push(delay);
+      let delay = localTimeStamp - dts;
+
+      // console.log(
+      //   "sts:"+sts+
+      //   ",dts:" +
+      //     dts +
+      //     ",localTimeStamp:" +
+      //     localTimeStamp +
+      //     ",minDiff:" +
+      //     this.minDiff +
+      //     ",delay:" +
+      //     delay
+      // );
+
+      if (this.delayArray.length >= 100) {
+        this.delayArray.shift();
+        this.delayArray.push(delay);
+      } else {
+        this.delayArray.push(delay);
+      }
     }
   }
 

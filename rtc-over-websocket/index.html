@@ -51,20 +51,23 @@
     var player = new AudioControllerApi.Player(defaultConfig, socket, delayDet);
 
     socket.on('SyncReqest', function (msg) {
-      console.log("RevSyncSyncReqest:" + msg.timestamp);
-      let syncRespone = { timestamp: getTimestamp() }
+      console.log("RevSyncSyncReqest:" + msg.sts);
+      //let syncRespone = { timestamp: getTimestamp() }
+      let syncRespone = {
+                  sts:getTimestamp()
+                };
       socket.emit('SyncResponse', syncRespone);
 
-      delayDet.updateTimestamp(msg.timestamp, getTimestamp());
+      delayDet.updateTimestamp(msg.sts,undefined, getTimestamp());
       if (isStream == false) {
         streamer.start();
         isStream = true;
       }
     });
     socket.on('SyncResponse', function (msg) {
-      console.log("RevSyncResponse:" + msg.timestamp);
+      console.log("RevSyncResponse:" + msg.sts);
       clearInterval(SyncTimer);
-      delayDet.updateTimestamp(msg.timestamp, getTimestamp());
+      delayDet.updateTimestamp(msg.sts,undefined, getTimestamp());
       if (isPlaying == false) {
         player.start();
         isPlaying = true;
@@ -89,9 +92,12 @@
     }
 
     function sendSyncReqest() {
-      let syncReqest = { timestamp: getTimestamp() }
+     // let syncReqest = { timestamp: getTimestamp() }
+      let syncReqest = {
+                  sts:getTimestamp()
+                };
       socket.emit('SyncReqest', syncReqest);
-      console.log("SendSyncReqest:" + syncReqest.timestamp);
+      console.log("SendSyncReqest:" + syncReqest.sts);
     }
 
     var myVar = setInterval(function () { myTimer() }, 1000);

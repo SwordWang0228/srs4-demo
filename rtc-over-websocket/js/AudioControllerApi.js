@@ -139,11 +139,13 @@
               var packets = _this.encoder.encode(pcm);
               for (var i = 0; i < packets.length; i++) {
                 let audioMsg = {
-                  timestamp: delayDet.getRemoteTime(getTimestamp()),
+                  sts:getTimestamp(),
+                  dts: delayDet.getRemoteTime(getTimestamp()),
                   sn: snCount,
                   data: packets[i],
                 };
                 snCount++;
+                console.log(audioMsg);
                 socket.emit("audio", audioMsg);
               }
             };
@@ -290,7 +292,7 @@
     this.gainNode.connect(audioContext.destination);
 
     this.parentSocket.on("audio", function (msg) {
-      delayDet.updateTimestamp(msg.timestamp, getTimestamp());
+      delayDet.updateTimestamp(msg.sts,msg.dts, getTimestamp());
       _this.auido16BufferQueue.write(_this.decoder.decode(msg.data));
     });
   };
