@@ -96,6 +96,9 @@
             _this.audioInput = audioContext.createMediaStreamSource(stream);
             // ganiNode https://developer.mozilla.org/en-US/docs/Web/API/GainNode
             _this.gainNode = audioContext.createGain();
+            // 滤波器
+            _this.biquadFilter = audioContext.createBiquadFilter();
+            _this.gainNode = audioContext.createGain();
             // 可以用AudioWorkletProcessor代替，https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletNode
             _this.recorder = audioContext.createScriptProcessor(
               _this.config.codec.bufferSize,
@@ -147,7 +150,14 @@
 
             _this.audioInput.connect(_this.gainNode);
             _this.gainNode.connect(_this.recorder);
-            _this.recorder.connect(audioContext.destination);
+            _this.recorder.connect(_this.biquadFilter);
+            _this.biquadFilter.connect(audioContext.destination);
+
+            this.biquadFilter.type = "lowpass";
+            this.biquadFilter.frequency.setValueAtTime(
+              4000,
+              audioCtx.currentTime
+            );
           },
           onError || _this.onError
         );
@@ -184,6 +194,10 @@
     if (this.gainNode) {
       this.gainNode.disconnect();
       this.gainNode = null;
+    }
+    if (this.biquadFilter) {
+      this.biquadFilter.disconnect();
+      this.biquadFilter = null;
     }
     if (this.recorder) {
       this.recorder.disconnect();
@@ -234,7 +248,7 @@
 
         console.log("read:"+ nSamples)
         var len = nSamples;
-        nSamples = Math.ceil(nSamples / 6);
+        nSamples = Math.ceil(nSamples / (audioContext.sampleRate / 8000));
 
         var samplesToPlay = this.buffer.subarray(0, nSamples);
         this.buffer = this.buffer.subarray(nSamples, this.buffer.length);
