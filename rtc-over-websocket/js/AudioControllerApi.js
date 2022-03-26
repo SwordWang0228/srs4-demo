@@ -78,7 +78,7 @@
       this.encoderWasm = new libopus.Encoder(
         this.config.codec.channels,
         this.config.codec.sampleRate,
-        6000,
+        12000,
         this.config.codec.frameDuration,
         true
       );
@@ -257,14 +257,14 @@
         newBuffer.set(newAudio, currentQLength);
         this.buffer = newBuffer;
 
-        if (this.buffer.length > 1600) {
-          // 调用 sonic 进行变速不变调处理
-          const sonic = window.Sonic({ sampleRate: 8000 });
-          sonic.setSpeed(2);
-          sonic.input(this.buffer);
-          this.buffer = sonic.flush();
-          console.log("  if (this.buffer.length > 1600) ");
-        }
+        // if (this.buffer.length > 1600) {
+        //   // 调用 sonic 进行变速不变调处理
+        //   const sonic = window.Sonic({ sampleRate: 8000 });
+        //   sonic.setSpeed(2);
+        //   sonic.input(this.buffer);
+        //   this.buffer = sonic.flush();
+        //   console.log("  if (this.buffer.length > 1600) ");
+        // }
 
 
       },
