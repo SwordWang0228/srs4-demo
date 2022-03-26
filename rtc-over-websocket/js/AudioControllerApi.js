@@ -45,10 +45,14 @@
         this.config.codec.bufferSize
       );
       this.parentSocket = socket;
-      this.decoder = new OpusDecoder(
-        this.config.codec.sampleRate,
-        this.config.codec.channels
-      );
+      // this.decoder = new OpusDecoder(
+      //   this.config.codec.sampleRate,
+      //   this.config.codec.channels
+      // );
+      this.decodeWasm = new libopus.Decoder(
+        this.config.codec.channels,
+        this.config.codec.sampleRate
+      )
       this.silence = new Float32Array(this.config.codec.bufferSize);
       this.delayDet = delayDet;
     },
@@ -71,12 +75,19 @@
         this.config.codec.bufferSize
       );
       this.parentSocket = socket;
-      this.encoder = new OpusEncoder(
-        this.config.codec.sampleRate,
+      this.encoderWasm = new libopus.Encoder(
         this.config.codec.channels,
-        this.config.codec.app,
-        this.config.codec.frameDuration
+        this.config.codec.sampleRate,
+        6000,
+        this.config.codec.frameDuration,
+        true
       );
+      // this.encoder = new OpusEncoder(
+      //   this.config.codec.sampleRate,
+      //   this.config.codec.channels,
+      //   this.config.codec.app,
+      //   this.config.codec.frameDuration
+      // );
       var _this = this;
       this.delayDet = delayDet;
 
@@ -136,18 +147,32 @@
                 pcm[j] = s;
               }
 
-              var packets = _this.encoder.encode(pcm);
-              for (var i = 0; i < packets.length; i++) {
+              // var packets2 = _this.encoder.encode(pcm);
+              _this.encoderWasm.input(pcm)
+              var output = _this.encoderWasm.output();
+              while (output) {
                 let audioMsg = {
                   sts:getTimestamp(),
                   dts: delayDet.getRemoteTime(getTimestamp()),
                   sn: snCount,
-                  data: packets[i],
+                  data: output,
                 };
                 snCount++;
-                console.log(audioMsg);
+                // console.log(audioMsg); 
                 socket.emit("audio", audioMsg);
+                output = _this.encoderWasm.output();
               }
+              // for (var i = 0; i < packets.length; i++) {
+              //   let audioMsg = {
+              //     sts:getTimestamp(),
+              //     dts: delayDet.getRemoteTime(getTimestamp()),
+              //     sn: snCount,
+              //     data: packets[i],
+              //   };
+              //   snCount++;
+              //   console.log(audioMsg);
+              //   socket.emit("audio", audioMsg);
+              // }
             };
 
             _this.audioInput.connect(_this.gainNode);
@@ -247,7 +272,7 @@
       read: function (nSamples) {
         //return Float32Array
 
-        console.log("read:" + nSamples);
+        // console.log("read:" + nSamples);
         var len = nSamples;
         nSamples = Math.ceil(nSamples / (audioContext.sampleRate / 8000));
 
@@ -293,7 +318,13 @@
 
     this.parentSocket.on("audio", function (msg) {
       delayDet.updateTimestamp(msg.sts,msg.dts, getTimestamp());
-      _this.auido16BufferQueue.write(_this.decoder.decode(msg.data));
+      // _this.auido16BufferQueue.write(_this.decoder.decode(msg.data));
+      _this.decodeWasm.input(new Int8Array(msg.data));
+      let output = _this.decodeWasm.output();
+      while (output) {
+        _this.auido16BufferQueue.write(output);
+        output = _this.decodeWasm.output();
+      }
     });
   };
 

@@ -33,17 +33,17 @@ class DelayDetection {
 
       let delay = localTimeStamp - dts;
 
-      console.log(
-        "sts:"+sts+
-        ",dts:" +
-          dts +
-          ",localTimeStamp:" +
-          localTimeStamp +
-          ",minDiff:" +
-          this.minDiff +
-          ",delay:" +
-          delay
-      );
+      // console.log(
+      //   "sts:"+sts+
+      //   ",dts:" +
+      //     dts +
+      //     ",localTimeStamp:" +
+      //     localTimeStamp +
+      //     ",minDiff:" +
+      //     this.minDiff +
+      //     ",delay:" +
+      //     delay
+      // );
 
       if (this.delayArray.length >= 100) {
         this.delayArray.shift();

@@ -1,116 +1,128 @@
 <!DOCTYPE html>
 <html>
+  <head>
+    <title>RTC COMM</title>
+  </head>
 
-<head>
-  <title>RTC COMM</title>
-</head>
+  <body>
+    <button onclick="start()">Start Comm</button>
+    <button onclick="stop()">Stop Comm</button>
+    <br />
+    <p id="status">Disconnected</p>
+    <p id="delay">delay:0</p>
+    <p id="buffer">buffer len:0</p>
 
-<body>
-  <button onclick="start()">Start Comm</button>
-  <button onclick="stop()">Stop Comm</button>
-  <br />
-  <p id="status">Disconnected</p>
-  <p id="delay">delay:0</p>
-  <p id="buffer">buffer len:0</p>
+    <script src="/socket.io/socket.io.js"></script>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <!-- <script type="text/javascript">
-    LIBOPUS_WASM_URL = "libopus.wasm";
-  </script>
-  <script type="text/javascript" src="libopus.wasm.js"></script> -->
+    <script src="AudioControllerApi.js"></script>
+    <script src="xaudio.js"></script>
+    <!-- <script src="opus.js"></script>
+    <script src="libopus.js"></script> -->
+    <script src="DelayDetection.js"></script>
+    <script src="sonic.js"></script>
 
-  <script src="AudioControllerApi.js"></script>
-  <script src="xaudio.js"></script>
-  <script src="opus.js"></script>
-  <script src="libopus.js"></script>
-  <script src="DelayDetection.js"></script>
-  <script src="sonic.js"></script>
+    <script type="text/javascript">
+      LIBOPUS_WASM_URL = "libopus.wasm";
+    </script>
+    <script type="text/javascript" src="libopus.wasm.js"></script>
 
+    <script>
+      var snCount = 0;
+      var socket = io();
+      var SyncTimer;
+      var isStream = false;
+      var isPlaying = false;
+      var avgDelay = 0;
 
-  <script>
+      //get pcm and encode
+      var defaultConfig = {
+        codec: {
+          sampleRate: 8000,
+          channels: 1,
+          app: 2048,
+          frameDuration: 20,
+          bufferSize: 1024,
+        },
+      };
+      var delayDet = new DelayDetection();
+      var streamer;
+      var player;
+      libopus.onload = function () {
+        console.log("libopus.onload");
+        streamer = new AudioControllerApi.Streamer(
+          defaultConfig,
+          socket,
+          delayDet
+        );
+        player = new AudioControllerApi.Player(defaultConfig, socket, delayDet);
+      };
 
-    var snCount = 0;
-    var socket = io();
-    var SyncTimer;
-    var isStream = false;
-    var isPlaying = false;
-    var avgDelay = 0;
+      socket.on("SyncReqest", function (msg) {
+        console.log("RevSyncSyncReqest:" + msg.sts);
+        //let syncRespone = { timestamp: getTimestamp() }
+        let syncRespone = {
+          sts: getTimestamp(),
+        };
+        socket.emit("SyncResponse", syncRespone);
 
-    //get pcm and encode
-    var defaultConfig = {
-      codec: {
-        sampleRate: 8000,
-        channels: 1,
-        app: 2048,
-        frameDuration: 20,
-        bufferSize: 1024
-      },
-    };
-    var delayDet = new DelayDetection();
-    var streamer = new AudioControllerApi.Streamer(defaultConfig, socket, delayDet);
-    var player = new AudioControllerApi.Player(defaultConfig, socket, delayDet);
+        delayDet.updateTimestamp(msg.sts, undefined, getTimestamp());
+        if (isStream == false) {
+          streamer.start();
+          isStream = true;
+        }
+      });
+      socket.on("SyncResponse", function (msg) {
+        console.log("RevSyncResponse:" + msg.sts);
+        clearInterval(SyncTimer);
+        delayDet.updateTimestamp(msg.sts, undefined, getTimestamp());
+        if (isPlaying == false) {
+          player.start();
+          isPlaying = true;
+        }
+        document.getElementById("status").innerHTML = "Connected";
+      });
 
-    socket.on('SyncReqest', function (msg) {
-      console.log("RevSyncSyncReqest:" + msg.sts);
-      //let syncRespone = { timestamp: getTimestamp() }
-      let syncRespone = {
-                  sts:getTimestamp()
-                };
-      socket.emit('SyncResponse', syncRespone);
-
-      delayDet.updateTimestamp(msg.sts,undefined, getTimestamp());
-      if (isStream == false) {
-        streamer.start();
-        isStream = true;
-      }
-    });
-    socket.on('SyncResponse', function (msg) {
-      console.log("RevSyncResponse:" + msg.sts);
-      clearInterval(SyncTimer);
-      delayDet.updateTimestamp(msg.sts,undefined, getTimestamp());
-      if (isPlaying == false) {
-        player.start();
-        isPlaying = true;
-      }
-      document.getElementById("status").innerHTML = "Connected";
-    });
-
-    function start() {
-      SyncTimer = setInterval(function () { sendSyncReqest() }, 1000);
-    }
-
-    function stop() {
-      streamer.stop();
-      player.stop();
-      isStream = false;
-      isPlaying = false;
-      document.getElementById("status").innerHTML = "Disconnected";
-    }
-
-    function getTimestamp() {
-      return Date.now();
-    }
-
-    function sendSyncReqest() {
-     // let syncReqest = { timestamp: getTimestamp() }
-      let syncReqest = {
-                  sts:getTimestamp()
-                };
-      socket.emit('SyncReqest', syncReqest);
-      console.log("SendSyncReqest:" + syncReqest.sts);
-    }
-
-    var myVar = setInterval(function () { myTimer() }, 1000);
-    function myTimer() {
-      avgDelay = delayDet.getDelay();
-      document.getElementById("delay").innerHTML = "delay:" + avgDelay;
-      if (isPlaying == true) {
-        document.getElementById("buffer").innerHTML = "buffer len:" + player.auido16BufferQueue.buffer.length;
+      function start() {
+        SyncTimer = setInterval(function () {
+          sendSyncReqest();
+        }, 1000);
       }
 
-    }
+      function stop() {
+        streamer.stop();
+        player.stop();
+        isStream = false;
+        isPlaying = false;
+        document.getElementById("status").innerHTML = "Disconnected";
+      }
 
-  </script>
-</body>
+      function getTimestamp() {
+        return Date.now();
+      }
 
+      function sendSyncReqest() {
+        // let syncReqest = { timestamp: getTimestamp() }
+        let syncReqest = {
+          sts: getTimestamp(),
+        };
+        socket.emit("SyncReqest", syncReqest);
+        console.log("SendSyncReqest:" + syncReqest.sts);
+      }
+
+      var myVar = setInterval(function () {
+        myTimer();
+      }, 1000);
+      function myTimer() {
+        avgDelay = delayDet.getDelay();
+        document.getElementById("delay").innerHTML = "delay:" + avgDelay;
+        if (isPlaying == true) {
+          document.getElementById("buffer").innerHTML =
+            "buffer len:" + player.auido16BufferQueue.buffer.length;
+        }
+      }
+
+      //if using asm.js, already loaded, force onload
+      if (libopus.loaded) libopus.onload();
+    </script>
+  </body>
 </html>
