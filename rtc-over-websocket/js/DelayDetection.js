@@ -12,12 +12,12 @@ class DelayDetection {
     this.diffArray.push(diff);
     if (this.minDiff === undefined) {
       this.minDiff = diff;
-      
-    } 
-    if(this.diffArray.length>10){
+
+    }
+    if (this.diffArray.length > 10) {
       this.diffArray.shift();
     }
-    
+
     // if (Math.abs(this.minDiff) > Math.abs(diff)) {
     //   this.minDiff = diff;
     // }
@@ -33,17 +33,8 @@ class DelayDetection {
 
       let delay = localTimeStamp - dts;
 
-      // console.log(
-      //   "sts:"+sts+
-      //   ",dts:" +
-      //     dts +
-      //     ",localTimeStamp:" +
-      //     localTimeStamp +
-      //     ",minDiff:" +
-      //     this.minDiff +
-      //     ",delay:" +
-      //     delay
-      // );
+      // console.log("sts:" + sts +",dts:" +dts +",localTimeStamp:" +localTimeStamp +",minDiff:" + 
+      //                                                 this.minDiff +",delay:" +delay);
 
       if (this.delayArray.length >= 100) {
         this.delayArray.shift();
@@ -55,6 +46,10 @@ class DelayDetection {
   }
 
   getRemoteTime(localTimestamp) {
+    if(this.minDiff === undefined){
+      console.log("need sync first!");
+      
+    }
     return localTimestamp + this.minDiff;
   }
 
@@ -68,6 +63,6 @@ class DelayDetection {
       var avgDelay = Math.floor(sum / this.delayArray.length);
     }
 
-    return avgDelay;
+    return avgDelay/2;
   }
 }
