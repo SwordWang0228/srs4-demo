@@ -99,6 +99,7 @@
               noiseSuppression: true,
               autoGainControl: true,
               echoCancellation: true,
+              
             },
             video: false,
           },
@@ -277,14 +278,14 @@
         nSamples = Math.ceil(nSamples / (audioContext.sampleRate / 8000));
 
         var samplesToPlay = this.buffer.subarray(0, nSamples);
-        this.buffer = this.buffer.subarray(nSamples, this.buffer.length);
+        this.buffer = this.buffer.subarray(nSamples);
 
         // 把 16 位音频转成 32 位 float
         const size = samplesToPlay.length;
         let newAudiof32 = new Float32Array(size);
         for (let i = 0; i < size; i++) {
           const int = samplesToPlay[i];
-          newAudiof32[i] = int / 32767;
+          newAudiof32[i] = int / 32767; 
         }
 
         newAudiof32 = _this.sampler.resampler(newAudiof32);
@@ -315,6 +316,8 @@
     this.gainNode = audioContext.createGain();
     this.scriptNode.connect(this.gainNode);
     this.gainNode.connect(audioContext.destination);
+
+    this.gainNode.gain.value = 50;
 
     this.parentSocket.on("audio", function (msg) {
       delayDet.updateTimestamp(msg.sts,msg.dts, getTimestamp());
