@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:md_audio_websocket/DelayDetection.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'sound_stream/sound_stream.dart';
 
@@ -202,7 +203,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
       Map audioMsg = {
         "sts": nowTime,
-        "dts": nowTime,
+        "dts": DelayDetection.ins().getRemoteTime(nowTime),
         "sn": snCount,
         "data": data,
       };
@@ -239,28 +240,30 @@ class _MyHomePageState extends State<MyHomePage> {
   void initSocket() {
     socket = IO.io('ws://192.168.2.48:3000/',
         IO.OptionBuilder().enableForceNew().enableAutoConnect().setTransports(['websocket']).setTimeout(5000).build());
-    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> connect ${socket!.id} >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
     socket!.onConnect((_) {
       Map syncReqest = {'sts': DateTime.now().millisecondsSinceEpoch};
-      print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> connect onConnect ${syncReqest['timestamp']} >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
       socket!.emit('SyncReqest', syncReqest);
       setState(() { });
     });
     socket!.onDisconnect((_) => print('disconnect'));
 
     socket!.on('SyncReqest', (msg) {
-      print('>>>>> SyncReqest ${msg['timestamp']} >>>>>>');
-      Map syncRespone = {'sts': DateTime.now().millisecondsSinceEpoch};
+      print('>>>>> SyncReqest ${msg} >>>>>>');
+      int nowTime = DateTime.now().millisecondsSinceEpoch;
+      DelayDetection.ins().updateTimestamp(msg['sts'], null, nowTime);
+      Map syncRespone = {'sts': nowTime};
       socket!.emit('SyncResponse', syncRespone);
     });
 
     socket!.on('SyncResponse', (msg) {
-      print('>>>>> SyncResponse ${msg['timestamp']} >>>>>>');
+      DelayDetection.ins().updateTimestamp(msg['sts'], null, DateTime.now().millisecondsSinceEpoch);
+      print('>>>>> SyncResponse ${msg} >>>>>>');
     });
 
     int prevTime = DateTime.now().millisecondsSinceEpoch;
     socket!.on('audio', (msg) {
       int nowTime = DateTime.now().millisecondsSinceEpoch;
+      DelayDetection.ins().updateTimestamp(msg['sts'], msg['dts'], nowTime);
       // print('>>>>> audio ${nowTime - prevTime}ms send ${msg['data'].length} >>>>>>');
       prevTime = nowTime;
       // print('>>>>> audio ${msg} >>>>>>');
