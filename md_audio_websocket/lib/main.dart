@@ -46,13 +46,14 @@ class _MyHomePageState extends State<MyHomePage> {
   final int tSampleRate = 44000;
   final RecorderStream _recorder = RecorderStream();
   final PlayerStream _player = PlayerStream();
+  List<Uint8List> _micChunks = [];
+
   bool _isRecording = false;
   bool _isPlaying = false;
 
   StreamSubscription? _recorderStatus;
   StreamSubscription? _playerStatus;
   StreamSubscription? _audioStream;
-  // ResampleParam resampleParam = ResampleParam();
 
   IO.Socket? socket;
 
@@ -88,6 +89,24 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
+
+            FloatingActionButton(
+              backgroundColor: (socket?.connected ?? false) ? Colors.green : Colors.blue,
+              onPressed: () {
+                if (_isPlaying) {
+                  _player.stop();
+                } else {
+                  _play();
+                }
+                setState(() {});
+              },
+              tooltip: 'socket',
+              child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+            ),
+            const VerticalDivider(
+              width: 20,
+              color: Colors.transparent,
+            ),
             FloatingActionButton(
               backgroundColor: (socket?.connected ?? false) ? Colors.green : Colors.blue,
               onPressed: () {
@@ -126,68 +145,19 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> stopRecord() async {
     await _recorder.stop();
-    await _player.start();
     setState(() {
       _isRecording = false;
     });
 
   }
-  // app: 2048
-  // bufferSize: 1024
-  // channels: 1
-  // frameDuration: 20
-  // sampleRate: 8000
+
   Future<void> startRecord() async {
-    await _player.stop();
     await _recorder.start();
     setState(() {
       _isRecording = true;
     });
   }
-  // static float CubicInterpolate(float y0, float y1, float y2, float y3, float x) {
-  //   float a, b, c, d;
-  //   a = y0 / -6.0 + y1 / 2.0 - y2 / 2.0 + y3 / 6.0;
-  //   b = y0 - 5.0 * y1 / 2.0 + 2.0 * y2 - y3 / 2.0;
-  //   c = -11.0 * y0 / 6.0 + 3.0 * y1 - 3.0 * y2 / 2.0 + y3 / 3.0;
-  //   d = y0;
-  //   float xx = x * x;
-  //   float xxx = xx * x;
-  //   return (a * xxx + b * xx + c * x + d);
-  // }
 
-  // resampleInit(ResampleParam param,int inSampleRate,int outSampleRate,int channels) {
-  //   double blockms = 70;
-  //   param.sum = 0;
-  //   param.channels = channels;
-  //   param.dis = inSampleRate/outSampleRate;
-  //   for ( int i= 0; i < 3*CHANNEL_OUT_MONO; i++)
-  //   {
-  //     param.databuffer[i] = 0;
-  //   }
-  //   param.inputsamples = inSampleRate * (blockms/1000).floor();
-  //   param.outputsamples = outSampleRate * (blockms/1000).floor();
-  // }
-
-  // resampleProcess(ResampleParam param, Float32List pData, ) {
-  //   List<double> buffero = List.filled(13440, 0.0).toList();
-  //   int ch = param.channels;
-  //   int idx;
-  //   List buffer = List.filled(4, 0);
-  //   List<double> databuf = param.databuffer;
-  //   for ( int i = 0 ; i < param.outputsamples!; i++) {
-  //     for ( int k = 0; k < ch; k++) {
-  //       for ( int j = 0; j <= 3; j++) {
-  //         idx = param.sum + j;
-  //         if ( idx < 3 ) {
-  //           buffer[j] = databuf[idx*ch+k];
-  //         } else {
-  //           buffer[j] = pData[(idx-3)*ch+k];
-  //         }
-  //       }
-  //     }
-  //   }
-  //   return Int16List.view(pData.buffer);
-  // }
   Future<void> initRecorder() async {
     // resampleInit(resampleParam, 44100, 8000, CHANNEL_OUT_MONO);
     int prevTime = DateTime.now().millisecondsSinceEpoch;
@@ -195,6 +165,13 @@ class _MyHomePageState extends State<MyHomePage> {
     _audioStream = _recorder.audioStream.listen((data) {
       // Float32List pData = data.buffer.asFloat32List();
       // Int16List newData = resampleProcess(resampleParam, pData);
+
+      if (_isPlaying) {
+        _player.writeChunk(data);
+      } else {
+        _micChunks.add(data);
+      }
+
       int nowTime = DateTime.now().millisecondsSinceEpoch;
 
       print("audioStream ${data}");
@@ -232,9 +209,20 @@ class _MyHomePageState extends State<MyHomePage> {
     });
 
     await Future.wait([
-      _recorder.initialize(sampleRate: 44000),
+      _recorder.initialize(),
       _player.initialize(),
     ]);
+  }
+
+  void _play() async {
+    await _player.start();
+
+    if (_micChunks.isNotEmpty) {
+      for (var chunk in _micChunks) {
+        await _player.writeChunk(chunk);
+      }
+      _micChunks.clear();
+    }
   }
 
   void initSocket() {

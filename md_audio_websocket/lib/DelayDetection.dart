@@ -48,7 +48,7 @@ class DelayDetection {
   getRemoteTime(localTimestamp) {
     if(minDiff == null){
     }
-    return localTimestamp + minDiff;
+    return localTimestamp + (minDiff ?? 0);
   }
 
   getDelay() {

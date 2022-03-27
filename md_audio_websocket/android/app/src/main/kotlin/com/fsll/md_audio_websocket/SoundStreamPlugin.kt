@@ -23,6 +23,7 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry
 import io.flutter.plugin.common.PluginRegistry.Registrar
+import java.lang.Math.min
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.ShortBuffer
@@ -63,20 +64,20 @@ public class SoundStreamPlugin : FlutterPlugin,
 
     //========= Recorder's vars
     private val mRecordFormat = AudioFormat.ENCODING_PCM_16BIT
-    private var mRecordSampleRate = 16000 // 16Khz
+    private var mRecordSampleRate = 8000 // 16Khz
     private var mRecorderBufferSize = 4096
     private var minBufferSize = 1024
     private var prevTimestamp = Date().time
     private var mOutChannels: Int = AudioFormat.CHANNEL_OUT_MONO
     private var mInChannels: Int = AudioFormat.CHANNEL_IN_MONO
-    private var audioData: ByteArray? = null
+    private var audioDataQueue: ShortArray? = null
     private var mRecorder: AudioRecord? = null
     private var mListener: OnRecordPositionUpdateListener? = null
     private val codec = Opus()
 
     //========= Player's vars
     private var mAudioTrack: AudioTrack? = null
-    private var mPlayerSampleRate = 16000 // 16Khz
+    private var mPlayerSampleRate = 8000 // 16Khz
     private var mPlayerBufferSize = 10240
     private var mPlayerFormat: AudioFormat = AudioFormat.Builder()
         .setEncoding(mRecordFormat)
@@ -145,6 +146,8 @@ public class SoundStreamPlugin : FlutterPlugin,
         mRecorder?.stop()
         mRecorder?.release()
         mRecorder = null
+        codec.decoderRelease()
+        codec.encoderRelease()
     }
 
     override fun onDetachedFromActivity() {
@@ -211,74 +214,6 @@ public class SoundStreamPlugin : FlutterPlugin,
         return false
     }
 
-    private fun initializeRecorder(@NonNull call: MethodCall, @NonNull result: Result) {
-        mRecordSampleRate = call.argument<Int>("sampleRate") ?: mRecordSampleRate
-        debugLogging = call.argument<Boolean>("showLogs") ?: false
-        minBufferSize = AudioRecord.getMinBufferSize(mRecordSampleRate, mInChannels, mRecordFormat)
-        mRecorderBufferSize = minBufferSize * 2
-        audioData = ByteArray(mRecorderBufferSize)
-        activeResult = result
-
-        codec.encoderInit(Constants.SampleRate._48000(), Constants.Channels.mono(), Constants.Application.lowdelay())
-
-        codec.encoderSetComplexity(Constants.Complexity.instance(10))                // set the complexity
-        codec.encoderSetBitrate(Constants.Bitrate.auto())                      // set the bitrate
-
-        val localContext = pluginContext
-        if (null == localContext) {
-            completeInitializeRecorder()
-            return
-        }
-        permissionToRecordAudio = ContextCompat.checkSelfPermission(
-            localContext,
-            Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
-        if (!permissionToRecordAudio) {
-            requestRecordPermission()
-        } else {
-            debugLog("has permission, completing")
-            completeInitializeRecorder()
-        }
-        debugLog("leaving initializeIfPermitted")
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun initRecorder() {
-        if (mRecorder?.state == AudioRecord.STATE_INITIALIZED) {
-            return
-        }
-        if (!permissionToRecordAudio) {
-            return
-        }
-        mRecorder = AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, mRecordSampleRate, mInChannels, mRecordFormat, minBufferSize)
-        if (mRecorder != null) {
-            mListener = createRecordListener()
-            println("mPeriodFrames $minBufferSize")
-//            mRecorder?.positionNotificationPeriod = minBufferSize
-            /** for non-blocking read we simply go for 20ms */
-            mRecorder?.positionNotificationPeriod = mRecordSampleRate * 2 / 100
-            mRecorder?.setRecordPositionUpdateListener(mListener)
-        }
-    }
-
-    private fun completeInitializeRecorder() {
-
-        debugLog("completeInitialize")
-        val initResult: HashMap<String, Any> = HashMap()
-
-        if (permissionToRecordAudio) {
-            mRecorder?.release()
-            initRecorder()
-            initResult["isMeteringEnabled"] = true
-            sendRecorderStatus(SoundStreamStatus.Initialized)
-        }
-
-        initResult["success"] = permissionToRecordAudio
-        debugLog("sending result")
-        activeResult?.success(initResult)
-        debugLog("leaving complete")
-        activeResult = null
-    }
 
     private fun sendEventMethod(name: String, data: Any) {
         val eventData: HashMap<String, Any> = HashMap()
@@ -291,6 +226,93 @@ public class SoundStreamPlugin : FlutterPlugin,
         if (debugLogging) {
             Log.d(logTag, msg)
         }
+    }
+
+
+    private fun initializePlayer(@NonNull call: MethodCall, @NonNull result: Result) {
+//        mPlayerSampleRate = call.argument<Int>("sampleRate") ?: mPlayerSampleRate
+        debugLogging = call.argument<Boolean>("showLogs") ?: false
+        mPlayerFormat = AudioFormat.Builder()
+            .setEncoding(mRecordFormat)
+            .setChannelMask(mOutChannels)
+            .setSampleRate(mPlayerSampleRate)
+            .build()
+
+        mPlayerBufferSize = AudioTrack.getMinBufferSize(mPlayerSampleRate, mOutChannels, mRecordFormat)
+
+        if (mAudioTrack?.state == AudioTrack.STATE_INITIALIZED) {
+            mAudioTrack?.release()
+        }
+
+        val audioAttributes = AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
+            .build()
+        mAudioTrack = AudioTrack(audioAttributes, mPlayerFormat, mPlayerBufferSize, AudioTrack.MODE_STREAM, AudioManager.AUDIO_SESSION_ID_GENERATE)
+        result.success(true)
+        sendPlayerStatus(SoundStreamStatus.Initialized)
+    }
+
+    private fun writeChunk(@NonNull call: MethodCall, @NonNull result: Result) {
+        val data = call.argument<ByteArray>("data")
+        if (data != null) {
+            pushPlayerChunk(data, result)
+        } else {
+            result.error(SoundStreamErrors.FailedToWriteBuffer.name, "Failed to write Player buffer", "'data' is null")
+        }
+    }
+
+    private fun pushPlayerChunk(chunk: ByteArray, result: Result) {
+        try {
+            println("未解码长度::${chunk.size}")
+            val decoded: ByteArray? = codec.decode(chunk, Constants.FrameSize._160())
+            println("解码长度::${decoded!!.size}")
+            if(decoded != null) {
+                val buffer = ByteBuffer.wrap(decoded)
+                val shortBuffer = ShortBuffer.allocate(chunk.size / 2)
+                shortBuffer.put(buffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer())
+                val shortChunk = shortBuffer.array()
+
+                mAudioTrack?.write(shortChunk, 0, shortChunk.size)
+                result.success(true)
+            } else {
+                result.error("-10", "解密空的", "解密内容是空的")
+            }
+        } catch (e: Exception) {
+            result.error(SoundStreamErrors.FailedToWriteBuffer.name, "写入失败 Failed to write Player buffer", e.message)
+        }
+    }
+
+    private fun startPlayer(result: Result) {
+        try {
+            if (mAudioTrack?.state == AudioTrack.PLAYSTATE_PLAYING) {
+                result.success(true)
+                return
+            }
+
+            mAudioTrack!!.play()
+            sendPlayerStatus(SoundStreamStatus.Playing)
+            result.success(true)
+        } catch (e: Exception) {
+            result.error(SoundStreamErrors.FailedToPlay.name, "Failed to start Player", e.localizedMessage)
+        }
+    }
+
+    private fun stopPlayer(result: Result) {
+        try {
+            if (mAudioTrack?.state == AudioTrack.STATE_INITIALIZED) {
+                mAudioTrack?.stop()
+            }
+            sendPlayerStatus(SoundStreamStatus.Stopped)
+            result.success(true)
+        } catch (e: Exception) {
+            result.error(SoundStreamErrors.FailedToStop.name, "Failed to stop Player", e.localizedMessage)
+        }
+    }
+
+    private fun sendPlayerStatus(status: SoundStreamStatus) {
+        sendEventMethod("playerStatus", status.name)
     }
 
     private fun startRecording(result: Result) {
@@ -328,116 +350,123 @@ public class SoundStreamPlugin : FlutterPlugin,
         sendEventMethod("recorderStatus", status.name)
     }
 
-    private fun initializePlayer(@NonNull call: MethodCall, @NonNull result: Result) {
-        mPlayerSampleRate = call.argument<Int>("sampleRate") ?: mPlayerSampleRate
+    private fun initializeRecorder(@NonNull call: MethodCall, @NonNull result: Result) {
+//        mRecordSampleRate = call.argument<Int>("sampleRate") ?: mRecordSampleRate
         debugLogging = call.argument<Boolean>("showLogs") ?: false
-        mPlayerFormat = AudioFormat.Builder()
-            .setEncoding(mRecordFormat)
-            .setChannelMask(mOutChannels)
-            .setSampleRate(mPlayerSampleRate)
-            .build()
+        minBufferSize = AudioRecord.getMinBufferSize(mRecordSampleRate, mInChannels, mRecordFormat)
+        mRecorderBufferSize = minBufferSize * 2
+        activeResult = result
 
-        mPlayerBufferSize = AudioTrack.getMinBufferSize(mPlayerSampleRate, mOutChannels, mRecordFormat)
+        initializeCodec()
 
-        if (mAudioTrack?.state == AudioTrack.STATE_INITIALIZED) {
-            mAudioTrack?.release()
+        val localContext = pluginContext
+        if (null == localContext) {
+            completeInitializeRecorder()
+            return
         }
-
-        val audioAttributes = AudioAttributes.Builder()
-            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-            .setUsage(AudioAttributes.USAGE_MEDIA)
-            .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
-            .build()
-        mAudioTrack = AudioTrack(audioAttributes, mPlayerFormat, mPlayerBufferSize, AudioTrack.MODE_STREAM, AudioManager.AUDIO_SESSION_ID_GENERATE)
-        result.success(true)
-        sendPlayerStatus(SoundStreamStatus.Initialized)
-    }
-
-    private fun writeChunk(@NonNull call: MethodCall, @NonNull result: Result) {
-        val data = call.argument<ByteArray>("data")
-        if (data != null) {
-            pushPlayerChunk(data, result)
+        permissionToRecordAudio = ContextCompat.checkSelfPermission(
+            localContext,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!permissionToRecordAudio) {
+            requestRecordPermission()
         } else {
-            result.error(SoundStreamErrors.FailedToWriteBuffer.name, "Failed to write Player buffer", "'data' is null")
+            debugLog("has permission, completing")
+            completeInitializeRecorder()
+        }
+        debugLog("leaving initializeIfPermitted")
+    }
+
+
+    private fun completeInitializeRecorder() {
+
+        debugLog("completeInitialize")
+        val initResult: HashMap<String, Any> = HashMap()
+
+        if (permissionToRecordAudio) {
+            mRecorder?.release()
+            initRecorder()
+            initResult["isMeteringEnabled"] = true
+            sendRecorderStatus(SoundStreamStatus.Initialized)
+        }
+
+        initResult["success"] = permissionToRecordAudio
+        debugLog("sending result")
+        activeResult?.success(initResult)
+        debugLog("leaving complete")
+        activeResult = null
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun initRecorder() {
+        if (mRecorder?.state == AudioRecord.STATE_INITIALIZED) {
+            return
+        }
+        if (!permissionToRecordAudio) {
+            return
+        }
+        mRecorder = AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, mRecordSampleRate, mInChannels, mRecordFormat, mRecorderBufferSize)
+        if (mRecorder != null) {
+            mListener = createRecordListener()
+            println("mPeriodFrames $minBufferSize")
+//            mRecorder?.positionNotificationPeriod = minBufferSize
+            /** for non-blocking read we simply go for 20ms */
+            mRecorder?.positionNotificationPeriod = mRecordSampleRate * 2 / 100 // 8000 => 160
+            mRecorder?.setRecordPositionUpdateListener(mListener)
         }
     }
 
-    private fun pushPlayerChunk(chunk: ByteArray, result: Result) {
-        try {
-            val buffer = ByteBuffer.wrap(chunk)
-            val shortBuffer = ShortBuffer.allocate(chunk.size / 2)
-            shortBuffer.put(buffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer())
-            val shortChunk = shortBuffer.array()
-
-            mAudioTrack?.write(shortChunk, 0, shortChunk.size)
-            result.success(true)
-        } catch (e: Exception) {
-            result.error(SoundStreamErrors.FailedToWriteBuffer.name, "Failed to write Player buffer", e.localizedMessage)
-        }
-    }
-
-    private fun startPlayer(result: Result) {
-        try {
-            if (mAudioTrack?.state == AudioTrack.PLAYSTATE_PLAYING) {
-                result.success(true)
-                return
-            }
-
-            mAudioTrack!!.play()
-            sendPlayerStatus(SoundStreamStatus.Playing)
-            result.success(true)
-        } catch (e: Exception) {
-            result.error(SoundStreamErrors.FailedToPlay.name, "Failed to start Player", e.localizedMessage)
-        }
-    }
-
-    private fun stopPlayer(result: Result) {
-        try {
-            if (mAudioTrack?.state == AudioTrack.STATE_INITIALIZED) {
-                mAudioTrack?.stop()
-            }
-            sendPlayerStatus(SoundStreamStatus.Stopped)
-            result.success(true)
-        } catch (e: Exception) {
-            result.error(SoundStreamErrors.FailedToStop.name, "Failed to stop Player", e.localizedMessage)
-        }
-    }
-
-    private fun sendPlayerStatus(status: SoundStreamStatus) {
-        sendEventMethod("playerStatus", status.name)
+    private fun initializeCodec() {
+        codec.encoderInit(Constants.SampleRate._8000(), Constants.Channels.mono(), Constants.Application.audio())
+        codec.decoderInit(Constants.SampleRate._8000(), Constants.Channels.mono())
+        codec.encoderSetComplexity(Constants.Complexity.instance(5))                // set the complexity
+        codec.encoderSetBitrate(Constants.Bitrate.max())                      // set the bitrate
     }
 
 
     private fun createRecordListener(): OnRecordPositionUpdateListener? {
         return object : OnRecordPositionUpdateListener {
             override fun onMarkerReached(recorder: AudioRecord) {
-//                recorder.read(audioData!!, 0, mRecorderBufferSize, AudioRecord.READ_NON_BLOCKING)
+//                recorder.read(audioData!!, 0, minBufferSize, AudioRecord.READ_NON_BLOCKING)
             }
 
             override fun onPeriodicNotification(recorder: AudioRecord) {
                 var nowTime = Date().time
                 println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> between timer ${nowTime - prevTimestamp}ms")
+                // 8000采样率，每20ms 160采集点，获取的数据不超过320，实际是244
+                // codec 编码是每20ms的数据进行编码
                 prevTimestamp = nowTime
-                val data = audioData!!
-                val shortOut = recorder.read(data, 0, minBufferSize, AudioRecord.READ_NON_BLOCKING)
+                val data = ShortArray(minBufferSize * 2)
+                val shortOut = recorder.read(data, 0, minBufferSize * 2, AudioRecord.READ_NON_BLOCKING)
                 // this condistion to prevent app crash from happening in Android Devices
                 // See issues: https://github.com/CasperPas/flutter-sound-stream/issues/25
-                if (shortOut < 1) {
+                if (shortOut <= 0) {
                     return
                 }
-                println("data ${data.size}")
-                // https://flutter.io/platform-channels/#codec
-                // convert short to int because of platform-channel's limitation
-                val encoded: ByteArray? = codec.encode(data, Constants.FrameSize._480())
-                println("codec.encode ${encoded?.size}")
-                if (encoded != null) {
-//                    val byteBuffer2 = ByteBuffer.allocate(encoded.size)
-//                    byteBuffer2.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(encoded)
-                    sendEventMethod("dataPeriod", encoded)
+                val readData: ShortArray = data.copyOfRange(0, shortOut)
+                // 插入队列
+                audioDataQueue = if(audioDataQueue == null) {
+                    readData
                 } else {
-//                    val byteBuffer = ByteBuffer.allocate(shortOut * 2)
-//                    byteBuffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(data)
-//                    sendEventMethod("dataPeriod", byteBuffer.asIntBuffer())
+                    val temp: ShortArray = ShortArray(audioDataQueue!!.size + shortOut)
+                    audioDataQueue!!.copyInto(temp, 0, 0, audioDataQueue!!.size - 1)
+                    readData.copyInto(temp, audioDataQueue!!.size, 0, shortOut - 1)
+                    temp
+                }
+                // 取出队列160个并发送到flutter
+                // 把采集的数据进行队列处理，每超过160就进行一次推流，不够等凑齐，超过就while循环推送
+                while (audioDataQueue!!.size >= 160) {
+                    val temp: ShortArray = ShortArray(audioDataQueue!!.size - 160)
+                    val willSend: ShortArray = audioDataQueue!!.sliceArray(IntRange(0, 159))
+                    audioDataQueue!!.copyInto(temp, 0, 160, audioDataQueue!!.size - 1)
+                    audioDataQueue = temp
+                    // 编码并发送
+                    println("未编码长度::${willSend!!.size}")
+                    val encoded: ShortArray? = codec.encode(willSend, Constants.FrameSize._160())
+                    println("编码长度::${encoded!!.size}")
+                    val byteBuffer = ByteBuffer.allocate(encoded!!.size * 2)
+                    byteBuffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(encoded)
+                    sendEventMethod("dataPeriod", byteBuffer.array())
                 }
             }
         }
