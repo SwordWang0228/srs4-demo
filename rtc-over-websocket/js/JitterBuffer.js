@@ -85,13 +85,14 @@ class JitterBuffer {
     }
 
     getLength(){
-        this.playBuffer.length;
+        
+        return this.stashBuffer==null? 0:this.stashBuffer.length;
     }
 
     float2Int(floatArray){
         let intArray = new Int16Array(floatArray.length);
         for(let i =0; i<floatArray.length;i++){
-            let s = Math.max(-1, Math.min(1, resampled[j]));
+            let s = Math.max(-1, Math.min(1, floatArray[j]));
             if (s < 0) {
                 s = s * 0x8000;
             } else {

@@ -44,6 +44,10 @@ app.get('/sonic.js', (req, res) => {
     res.sendFile(__dirname + '/js/sonic.js');
 });
 
+app.get('/JitterBuffer.js', (req, res) => {
+    res.sendFile(__dirname + '/js/JitterBuffer.js');
+});
+
 
 io.on('connection', (socket) => {
     console.log('a user connected');

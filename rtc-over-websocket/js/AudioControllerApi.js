@@ -45,16 +45,14 @@
         this.config.codec.bufferSize
       );
       this.parentSocket = socket;
-      // this.decoder = new OpusDecoder(
-      //   this.config.codec.sampleRate,
-      //   this.config.codec.channels
-      // );
-      this.decodeWasm = new libopus.Decoder(
-        this.config.codec.channels,
-        this.config.codec.sampleRate
-      )
+      this.decoder = new OpusDecoder(
+        this.config.codec.sampleRate,
+        this.config.codec.channels
+      );
       this.silence = new Float32Array(this.config.codec.bufferSize);
       this.delayDet = delayDet;
+
+      this.jitterBuffer = new JitterBuffer(2,48000,48000,1024,null);
     },
     Streamer: function (config, socket, delayDet) {
       navigator.getUserMedia =
@@ -75,19 +73,12 @@
         this.config.codec.bufferSize
       );
       this.parentSocket = socket;
-      this.encoderWasm = new libopus.Encoder(
-        this.config.codec.channels,
+      this.encoder = new OpusEncoder(
         this.config.codec.sampleRate,
-        12000,
-        this.config.codec.frameDuration,
-        true
+        this.config.codec.channels,
+        this.config.codec.app,
+        this.config.codec.frameDuration
       );
-      // this.encoder = new OpusEncoder(
-      //   this.config.codec.sampleRate,
-      //   this.config.codec.channels,
-      //   this.config.codec.app,
-      //   this.config.codec.frameDuration
-      // );
       var _this = this;
       this.delayDet = delayDet;
 
@@ -99,7 +90,6 @@
               noiseSuppression: true,
               autoGainControl: true,
               echoCancellation: true,
-              
             },
             video: false,
           },
@@ -137,43 +127,29 @@
               //   resampled16[j] = s;
               // }
               // var packets = _this.encoder.encode(resampled16);
-              var size = resampled.length;
+              // var size = resampled.length;
 
-              var pcm = new Int16Array(size);
-              var sum = 0;
-              for (var j = 0; j < size; j++) {
-                //floatTo16BitPCM
-                var s = Math.max(-1, Math.min(1, resampled[j]));
-                s = s < 0 ? s * 0x8000 : s * 0x7fff;
-                pcm[j] = s;
-              }
+              // var pcm = new Int16Array(size);
+              // var sum = 0;
+              // for (var j = 0; j < size; j++) {
+              //   //floatTo16BitPCM
+              //   var s = Math.max(-1, Math.min(1, resampled[j]));
+              //   s = s < 0 ? s * 0x8000 : s * 0x7fff;
+              //   pcm[j] = s;
+              // }
 
-              // var packets2 = _this.encoder.encode(pcm);
-              _this.encoderWasm.input(pcm)
-              var output = _this.encoderWasm.output();
-              while (output) {
+              var packets = _this.encoder.encode_float(resampled);
+              for (var i = 0; i < packets.length; i++) {
                 let audioMsg = {
                   sts:getTimestamp(),
                   dts: delayDet.getRemoteTime(getTimestamp()),
                   sn: snCount,
-                  data: output,
+                  data: packets[i],
                 };
                 snCount++;
-                // console.log(audioMsg); 
+                //console.log(audioMsg);
                 socket.emit("audio", audioMsg);
-                output = _this.encoderWasm.output();
               }
-              // for (var i = 0; i < packets.length; i++) {
-              //   let audioMsg = {
-              //     sts:getTimestamp(),
-              //     dts: delayDet.getRemoteTime(getTimestamp()),
-              //     sn: snCount,
-              //     data: packets[i],
-              //   };
-              //   snCount++;
-              //   console.log(audioMsg);
-              //   socket.emit("audio", audioMsg);
-              // }
             };
 
             _this.audioInput.connect(_this.gainNode);
@@ -238,77 +214,23 @@
     }
   };
 
+  AudioControllerApi.Player.prototype.getStashBufLen = function () {
+    return this.jitterBuffer;
+  }
+
   AudioControllerApi.Player.prototype.start = function () {
     var _this = this;
-
-
-
-
-    this.auido16BufferQueue = {
-      buffer: new Int16Array(0),
-
-      // float32Array
-
-
-      write: function (newAudio) {
-        var currentQLength = this.buffer.length;
-
-        var newBuffer = new Int16Array(currentQLength + newAudio.length);
-        newBuffer.set(this.buffer, 0);
-        newBuffer.set(newAudio, currentQLength);
-        this.buffer = newBuffer;
-
-        // if (this.buffer.length > 1600) {
-        //   // 调用 sonic 进行变速不变调处理
-        //   const sonic = window.Sonic({ sampleRate: 8000 });
-        //   sonic.setSpeed(2);
-        //   sonic.input(this.buffer);
-        //   this.buffer = sonic.flush();
-        //   console.log("  if (this.buffer.length > 1600) ");
-        // }
-
-
-      },
-
-      read: function (nSamples) {
-        //return Float32Array
-
-        // console.log("read:" + nSamples);
-        var len = nSamples;
-        nSamples = Math.ceil(nSamples / (audioContext.sampleRate / 8000));
-
-        var samplesToPlay = this.buffer.subarray(0, nSamples);
-        this.buffer = this.buffer.subarray(nSamples);
-
-        // 把 16 位音频转成 32 位 float
-        const size = samplesToPlay.length;
-        let newAudiof32 = new Float32Array(size);
-        for (let i = 0; i < size; i++) {
-          const int = samplesToPlay[i];
-          newAudiof32[i] = int / 32767; 
-        }
-
-        newAudiof32 = _this.sampler.resampler(newAudiof32);
-
-        // console.log("read:"+ len+",retrun :"+newAudiof32.length)
-        return newAudiof32;
-      },
-
-      length: function () {
-        return this.buffer.length;
-      },
-    };
-
+    
     this.scriptNode = audioContext.createScriptProcessor(
       this.config.codec.bufferSize,
       1,
       1
     );
     this.scriptNode.onaudioprocess = function (e) {
-      if (_this.auido16BufferQueue.length() >= 0) {
-        e.outputBuffer
-          .getChannelData(0)
-          .set(_this.auido16BufferQueue.read(_this.config.codec.bufferSize));
+
+      let buf =  _this.jitterBuffer.pop();
+      if(buf != null) {
+        e.outputBuffer.getChannelData(0).set(buf);
       } else {
         e.outputBuffer.getChannelData(0).set(_this.silence);
       }
@@ -317,17 +239,10 @@
     this.scriptNode.connect(this.gainNode);
     this.gainNode.connect(audioContext.destination);
 
-    this.gainNode.gain.value = 50;
-
     this.parentSocket.on("audio", function (msg) {
       delayDet.updateTimestamp(msg.sts,msg.dts, getTimestamp());
-      // _this.auido16BufferQueue.write(_this.decoder.decode(msg.data));
-      _this.decodeWasm.input(new Int8Array(msg.data));
-      let output = _this.decodeWasm.output();
-      while (output) {
-        _this.auido16BufferQueue.write(output);
-        output = _this.decodeWasm.output();
-      }
+      _this.jitterBuffer.push(_this.sampler.resampler(_this.decoder.decode_float(msg.data)));
+    
     });
   };
 
