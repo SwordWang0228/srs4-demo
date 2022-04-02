@@ -49,20 +49,46 @@ app.get('/JitterBuffer.js', (req, res) => {
 });
 
 
+const userToSocketId = {};
+
 io.on('connection', (socket) => {
-    console.log('a user connected');
+    const socketId = socket.id;
+    let userName = null;
+    console.log('a user connected', socketId);
+
+    function sendMessageToOthers(eventName, msg) {
+        // 发消息给其它端，并带上服务端时间
+        msg.serverTime = new Date().getTime();
+        msg.fromUserName = userName;
+        // for (const tmpUserName in userToSocketId) {
+        //     const tmpSocketId = userToSocketId[tmpUserName];
+        //     if (socketId !== tmpSocketId) {
+        //         socket.to(tmpSocketId).emit(eventName, msg);
+        //     }
+        // } 
+        socket.broadcast.emit(eventName, msg);
+    }
+
     //console.log(__dirname);
     socket.on('disconnect', () => {
-        console.log('user disconnected');
+        delete userToSocketId.userName
+        console.log('user disconnected', socketId);
     });
+
+    socket.on('login', (body) => {
+        userToSocketId[body.userName] = socketId;
+        userName = body.userName;
+        console.log('user login', userName);
+    })
+
     socket.on('audio', (msg) => {
-        socket.broadcast.emit('audio', msg);
+        sendMessageToOthers('audio', msg);
     });
     socket.on('SyncReqest', (msg) => {
-        socket.broadcast.emit('SyncReqest', msg);
+        sendMessageToOthers('SyncReqest', msg);
     });
     socket.on('SyncResponse', (msg) => {
-        socket.broadcast.emit('SyncResponse', msg);
+        sendMessageToOthers('SyncResponse', msg);
     });
 });
 
