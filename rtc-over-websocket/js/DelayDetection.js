@@ -47,8 +47,7 @@ class DelayDetection {
 
   getRemoteTime(localTimestamp) {
     if(this.minDiff === undefined){
-      console.log("need sync first!");
-      
+      //console.log("need sync first!");
     }
     return localTimestamp + this.minDiff;
   }
@@ -66,3 +65,4 @@ class DelayDetection {
     return avgDelay/2;
   }
 }
+module.exports = DelayDetection;

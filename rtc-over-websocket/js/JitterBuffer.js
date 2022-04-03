@@ -12,6 +12,8 @@ class JitterBuffer {
         this.sonic = sonic;
         this.delay = 0;
         this.processBufSize = processBufSize;
+
+        this.test = false;
     }
 
     setDelay(delay){
@@ -46,6 +48,12 @@ class JitterBuffer {
     }
 
     appendToPlayBuffer(){
+        //加减速播放
+        if(this.getLength() > 9600){
+
+        }
+
+
         while(this.playBuffer.length < this.playBufLen){
             let blockBuffer = this.extractBuffer(this.processBufSize);
             if(blockBuffer != null){
@@ -58,6 +66,7 @@ class JitterBuffer {
 
     push(buf){
 
+        //console.log("push len:"+buf.length);
         this.appendBuffer(buf);
         this.appendToPlayBuffer();
         //console.log("this.stashBuffer:"+this.stashBuffer.length);
@@ -85,20 +94,19 @@ class JitterBuffer {
     }
 
     getLength(){
-        
         return this.stashBuffer==null? 0:this.stashBuffer.length;
     }
 
     float2Int(floatArray){
         let intArray = new Int16Array(floatArray.length);
         for(let i =0; i<floatArray.length;i++){
-            let s = Math.max(-1, Math.min(1, floatArray[j]));
+            let s = floatArray[j];
             if (s < 0) {
-                s = s * 0x8000;
+                s = s * 32768;
             } else {
-                s = s * 0x7fff;
+                s = s * 32767;
             }
-            intArray[i] = s;
+            intArray[i] = Math.floor(s);
         }
         return intArray;
     }

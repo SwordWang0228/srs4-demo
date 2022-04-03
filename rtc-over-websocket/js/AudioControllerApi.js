@@ -113,31 +113,7 @@
               var resampled = _this.sampler.resampler(
                 e.inputBuffer.getChannelData(0)
               );
-              // 32 位转 16 位
-              // -1~1 f32
-              // const size = resampled.length;
-              // const resampled16 = new Int16Array(size);
-              // for (let j = 0; j < size; j++) {
-              //   let s = Math.max(-1, Math.min(1, resampled[j]));
-              //   if (s < 0) {
-              //     s = s * 0x8000;
-              //   } else {
-              //     s = s * 0x7fff;
-              //   }
-              //   resampled16[j] = s;
-              // }
-              // var packets = _this.encoder.encode(resampled16);
-              // var size = resampled.length;
-
-              // var pcm = new Int16Array(size);
-              // var sum = 0;
-              // for (var j = 0; j < size; j++) {
-              //   //floatTo16BitPCM
-              //   var s = Math.max(-1, Math.min(1, resampled[j]));
-              //   s = s < 0 ? s * 0x8000 : s * 0x7fff;
-              //   pcm[j] = s;
-              // }
-
+ 
               var packets = _this.encoder.encode_float(resampled);
               for (var i = 0; i < packets.length; i++) {
                 let audioMsg = {
@@ -238,14 +214,21 @@
     this.gainNode = audioContext.createGain();
     this.scriptNode.connect(this.gainNode);
     this.gainNode.connect(audioContext.destination);
-
-    this.parentSocket.on("audio", function (msg) {
-      delayDet.updateTimestamp(msg.sts,msg.dts, getTimestamp());
-      _this.jitterBuffer.push(_this.sampler.resampler(_this.decoder.decode_float(msg.data)));
+    this.gainNode.gain.value = 30;
+    // this.parentSocket.on("audio", function (msg) {
+    //   delayDet.updateTimestamp(msg.sts,msg.dts, getTimestamp());
+    //   console.log(msg);
+    //   _this.jitterBuffer.push(_this.sampler.resampler(_this.decoder.decode_float(msg.data)));
     
-    });
+    // });
   };
+  
 
+  AudioControllerApi.Player.prototype.pushAudio = function (msg) {
+    delayDet.updateTimestamp(msg.sts,msg.dts, getTimestamp());
+    console.log(msg);
+    this.jitterBuffer.push(this.sampler.resampler(this.decoder.decode_float(msg.data)));
+  };
   AudioControllerApi.Player.prototype.getVolume = function () {
     return this.gainNode ? this.gainNode.gain.value : "Stream not started yet";
   };

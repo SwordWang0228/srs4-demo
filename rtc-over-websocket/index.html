@@ -41,6 +41,7 @@
     var isStream = false;
     var isPlaying = false;
     var avgDelay = 0;
+    var isLogin = false;
 
     //get pcm and encode
     var defaultConfig = {
@@ -54,40 +55,59 @@
     };
     var delayDet = new DelayDetection();
     var streamer = new AudioControllerApi.Streamer(defaultConfig, socket, delayDet);
-    var player = new AudioControllerApi.Player(defaultConfig, socket, delayDet);
 
-    socket.on('SyncReqest', function (msg) {
-      console.log("RevSyncSyncReqest:" + msg.sts);
-      //let syncRespone = { timestamp: getTimestamp() }
-      let syncRespone = {
-                  sts:getTimestamp()
-                };
-      socket.emit('SyncResponse', syncRespone);
+    var PlayerHandler = new Map();
 
-      delayDet.updateTimestamp(msg.sts,undefined, getTimestamp());
-      if (isStream == false) {
-        streamer.start();
-        isStream = true;
-      }
-    });
+    //var player = new AudioControllerApi.Player(defaultConfig, socket, delayDet);
+
+    // socket.on('SyncReqest', function (msg) {
+
+    //   console.log("RevSyncSyncReqest:" + msg.sts);
+    //   //let syncRespone = { timestamp: getTimestamp() }
+    //   let syncRespone = {
+    //               sts:getTimestamp()
+    //             };
+    //   socket.emit('SyncResponse', syncRespone);
+
+    //   delayDet.updateTimestamp(msg.sts,undefined, getTimestamp());
+    //   if (isStream == false) {
+    //     streamer.start();
+    //     isStream = true;
+    //   }
+    // });
     socket.on('SyncResponse', function (msg) {
       console.log("RevSyncResponse:" + msg.sts);
       clearInterval(SyncTimer);
       delayDet.updateTimestamp(msg.sts,undefined, getTimestamp());
-      if (isPlaying == false) {
-        player.start();
-        isPlaying = true;
+      // if (isPlaying == false) {
+      //   player.start();
+      //   isPlaying = true;e
+      // }
+      if (isStream == false) {
+        streamer.start();
+        isStream = true;
       }
       document.getElementById("status").innerHTML = "Connected";
     });
 
     function start() {
+      if(isLogin == false){
+        window.alert("请先登入");
+        return;
+      }
       SyncTimer = setInterval(function () { sendSyncReqest() }, 1000);
     }
 
     function stop() {
       streamer.stop();
-      player.stop();
+     // player.stop();
+     PlayerHandler.forEach((value,key)=>{
+              value.stop();
+                
+            });
+     PlayerHandler.clear();
+
+
       isStream = false;
       isPlaying = false;
       document.getElementById("status").innerHTML = "Disconnected";
@@ -96,6 +116,8 @@
     function login() {
       const userName = document.getElementById('userName').value;
       socket.emit('login', { userName });
+
+      isLogin = true;
     }
 
     function getTimestamp() {
@@ -103,7 +125,7 @@
     }
 
     function sendSyncReqest() {
-     // let syncReqest = { timestamp: getTimestamp() }
+
       let syncReqest = {
                   sts:getTimestamp()
                 };
@@ -120,6 +142,26 @@
       }
 
     }
+
+    socket.on("audio", function (msg) {
+      if(PlayerHandler.has(msg.id) == false){
+         let player = new AudioControllerApi.Player(defaultConfig, socket, delayDet);
+         player.start();
+         PlayerHandler.set(msg.id,player);
+      }
+
+      if(PlayerHandler.has(msg.id)){
+         PlayerHandler.get(msg.id).pushAudio(msg);
+      }
+    });
+
+    
+    socket.on("audio-break", function (msg) {
+      if(PlayerHandler.has(msg.id)){
+        PlayerHandler.get(msg.id).stop();
+         PlayerHandler.delete(msg.id);
+      }
+    });
 
   </script>
 </body>
