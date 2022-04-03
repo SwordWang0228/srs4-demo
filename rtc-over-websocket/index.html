@@ -6,6 +6,10 @@
 </head>
 
 <body>
+  <input type="text" id="userName" placeholder="User name" />
+  <button onclick="login()">Login</button>
+  <br />
+  <br />
   <button onclick="start()">Start Comm</button>
   <button onclick="stop()">Stop Comm</button>
   <br />
@@ -87,6 +91,11 @@
       isStream = false;
       isPlaying = false;
       document.getElementById("status").innerHTML = "Disconnected";
+    }
+
+    function login() {
+      const userName = document.getElementById('userName').value;
+      socket.emit('login', { userName });
     }
 
     function getTimestamp() {
