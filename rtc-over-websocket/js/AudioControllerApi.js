@@ -53,6 +53,8 @@
       this.delayDet = delayDet;
 
       this.jitterBuffer = new JitterBuffer(2,48000,48000,1024,null);
+
+      this.pushDelay=0;
     },
     Streamer: function (config, socket, delayDet) {
       navigator.getUserMedia =
@@ -100,13 +102,11 @@
             _this.gainNode = audioContext.createGain();
             // 滤波器
             _this.biquadFilter = audioContext.createBiquadFilter();
-            _this.gainNode = audioContext.createGain();
+            _this.biquadFilter.type = "lowpass";
+            _this.biquadFilter.frequency.setValueAtTime(2000,audioContext.currentTime);
+      
             // 可以用AudioWorkletProcessor代替，https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletNode
-            _this.recorder = audioContext.createScriptProcessor(
-              _this.config.codec.bufferSize,
-              1,
-              1
-            );
+            _this.recorder = audioContext.createScriptProcessor(_this.config.codec.bufferSize,1,1);
 
             //encode
             _this.recorder.onaudioprocess = function (e) {
@@ -133,11 +133,6 @@
             _this.recorder.connect(_this.biquadFilter);
             _this.biquadFilter.connect(audioContext.destination);
 
-            _this.biquadFilter.type = "lowpass";
-            _this.biquadFilter.frequency.setValueAtTime(
-              4000,
-              audioContext.currentTime
-            );
           },
           onError || _this.onError
         );
@@ -197,11 +192,7 @@
   AudioControllerApi.Player.prototype.start = function () {
     var _this = this;
     
-    this.scriptNode = audioContext.createScriptProcessor(
-      this.config.codec.bufferSize,
-      1,
-      1
-    );
+    this.scriptNode = audioContext.createScriptProcessor(this.config.codec.bufferSize,1,1 );
     this.scriptNode.onaudioprocess = function (e) {
 
       let buf =  _this.jitterBuffer.pop();
@@ -214,19 +205,16 @@
     this.gainNode = audioContext.createGain();
     this.scriptNode.connect(this.gainNode);
     this.gainNode.connect(audioContext.destination);
-    this.gainNode.gain.value = 30;
-    // this.parentSocket.on("audio", function (msg) {
-    //   delayDet.updateTimestamp(msg.sts,msg.dts, getTimestamp());
-    //   console.log(msg);
-    //   _this.jitterBuffer.push(_this.sampler.resampler(_this.decoder.decode_float(msg.data)));
-    
-    // });
+    this.gainNode.gain.value = 0.7;
+
   };
   
 
   AudioControllerApi.Player.prototype.pushAudio = function (msg) {
     delayDet.updateTimestamp(msg.sts,msg.dts, getTimestamp());
-    console.log(msg);
+    this.pushDelay = msg.delay;
+    //console.log(msg);
+    //console.log("远端估计时间:"+ msg.dts + ", 实际时间:"+getTimestamp()+",计算平均延迟:"+delayDet.getDelay()+",即时延迟:" + (getTimestamp()-msg.dts)/2);
     this.jitterBuffer.push(this.sampler.resampler(this.decoder.decode_float(msg.data)));
   };
   AudioControllerApi.Player.prototype.getVolume = function () {

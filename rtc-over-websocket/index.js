@@ -6,7 +6,7 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server);
 
-const DelayDetection = require(__dirname + "/js/DelayDetection.js");
+const DelayDetection = require(__dirname + "/DelayDetection.js");
 const SocketHandler = require(__dirname + "/js/SocketHandler.js");
 
 app.get('/', (req, res) => {

@@ -1,4 +1,4 @@
-// Delay Detection -- client 
+// Delay Detection---server
 class DelayDetection {
   constructor() {
     this.delayArray = new Array();
@@ -9,15 +9,13 @@ class DelayDetection {
   //dts:destination timestamp
   updateTimestamp(sts, dts, localTimeStamp) {
     let diff = sts - localTimeStamp;
-
+    
     if (this.diffArray.length > 1000) {
       this.diffArray.shift();
       this.diffArray.push(diff);
     }
-    
     if (this.minDiff === undefined) {
       this.minDiff = diff;
-
     }
 
 
@@ -36,6 +34,8 @@ class DelayDetection {
 
       let delay = localTimeStamp - dts;
 
+      //console.log("即时延迟 =" +delay);
+
       // console.log("sts:" + sts +",dts:" +dts +",localTimeStamp:" +localTimeStamp +",minDiff:" + 
       //                                                 this.minDiff +",delay:" +delay);
 
@@ -45,6 +45,7 @@ class DelayDetection {
       } else {
         this.delayArray.push(delay);
       }
+
     }
   }
 
@@ -68,3 +69,4 @@ class DelayDetection {
     return avgDelay/2;
   }
 }
+module.exports = DelayDetection;

@@ -14,8 +14,7 @@
   <button onclick="stop()">Stop Comm</button>
   <br />
   <p id="status">Disconnected</p>
-  <p id="delay">delay:0</p>
-  <p id="buffer">buffer len:0</p>
+  <p id="info">------</p>
 
   <script src="/socket.io/socket.io.js"></script>
   <!-- <script type="text/javascript">
@@ -29,10 +28,7 @@
   <script src="libopus.js"></script>
   <script src="DelayDetection.js"></script>
   <script src="sonic.js"></script>
-  
   <script src="JitterBuffer.js"></script>
-
-
   <script>
 
     var snCount = 0;
@@ -48,7 +44,7 @@
       codec: {
         sampleRate: 8000,
         channels: 1,
-        app: 2048,
+        app: 2049,
         frameDuration: 20,
         bufferSize: 1024
       },
@@ -135,12 +131,12 @@
 
     var myVar = setInterval(function () { myTimer() }, 1000);
     function myTimer() {
-      avgDelay = delayDet.getDelay();
-      document.getElementById("delay").innerHTML = "delay:" + avgDelay;
-      if (isPlaying == true) {
-        document.getElementById("buffer").innerHTML = "buffer len:" + player.getStashBufLen().getLength();
-      }
-
+      let info = "";
+      PlayerHandler.forEach((value,key)=>{
+          info = info+key+",&nbsp;&nbsp;delay:"+(delayDet.getDelay()+value.pushDelay)+",buffer len:"+value.getStashBufLen().getLength()+"<br />";
+      });
+      document.getElementById("info").innerHTML = info;
+        
     }
 
     socket.on("audio", function (msg) {
@@ -161,6 +157,16 @@
         PlayerHandler.get(msg.id).stop();
          PlayerHandler.delete(msg.id);
       }
+    });
+
+    socket.on("sync", function (msg) {
+      delayDet.updateTimestamp(msg.sts,undefined, getTimestamp());
+    });
+
+    socket.on("disconnect", () => {
+      console.log("服务器断开");
+
+      stop();
     });
 
   </script>

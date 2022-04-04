@@ -6,6 +6,8 @@ class SocketHandler {
         this.userName = null;
         this.delayDet = delayDet;
         this.handlermap = handlermap;
+        this.isSync = false;
+        this.SyncTimer = undefined;
     }
 
     init(){
@@ -18,6 +20,8 @@ class SocketHandler {
             if(this.handlermap.has(this.socket.id)){
                 this.handlermap.delete(this.socket.id);
             }
+
+            this.isSync = false;
 
             //广播断开
             let msg = {
@@ -34,11 +38,12 @@ class SocketHandler {
         })
     
         this.socket.on('audio', (msg) => {
-
-            //console.log(this.handlermap.size);
+            this.delayDet.updateTimestamp(msg.sts,msg.dts, this.getTimestamp());
+            let delay = this.delayDet.getDelay();
+            //console.log("远端估计时间:"+ msg.dts + ", 实际时间:"+this.getTimestamp()+",计算平均延迟:"+delay+",即时延迟:" + (this.getTimestamp()-msg.dts)/2);
             this.handlermap.forEach((value,key)=>{
                 if(key == value.socketId && key != this.socketId){
-                    value.sendAudioMessage(msg.data,this.socketId);
+                    value.sendAudioMessage(msg.data,this.socketId,delay);
                 }
                 
             });
@@ -46,6 +51,7 @@ class SocketHandler {
         });
     
         this.socket.on('SyncReqest', (msg) => {
+            this.isSync = true;
 
             this.delayDet.updateTimestamp(msg.sts,undefined, this.getTimestamp());
 
@@ -53,6 +59,11 @@ class SocketHandler {
                 sts:this.getTimestamp()
             };
             this.socket.emit('SyncResponse', syncRespone);
+
+            if(this.SyncTimer != undefined){
+                clearInterval(SyncTimer);
+                this.SyncTimer = setInterval(function () { this.sendSync() }, 500);
+            }
     
         });
     }
@@ -61,16 +72,31 @@ class SocketHandler {
 
     }
 
-    sendAudioMessage(data,socketId){
-
+    sendAudioMessage(data,socketId,delay){
+        if(this.isSync == false){
+            return;
+        }
         let audioMsg = {
             sts:this.getTimestamp(),
             dts:this.delayDet.getRemoteTime(this.getTimestamp()),
             sn: 1,
             data: data,
-            id:socketId
+            id:socketId,
+            delay:delay
           };
         this.socket.emit('audio', audioMsg);
+
+        if(this.SyncTimer != undefined){
+            clearInterval(SyncTimer);
+            this.SyncTimer = setInterval(function () { this.sendSync() }, 500);
+        }
+    }
+
+    sendSync(){
+        let syncMsg = {
+            sts:this.getTimestamp(),
+          };
+        this.socket.emit('sync', syncMsg);
     }
 
     getTimestamp() {
