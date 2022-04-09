@@ -51,14 +51,13 @@ class JitterBuffer {
     }
 
     appendToPlayBuffer(){
-        //加减速播放
+        
         if(this.getLength() > (this.inputSamplerate*3/10) && this.isAccPlay == false){
-            this.isAccPlay == true;
-            //console.log("ACC Play!");
+            this.isAccPlay = true;
         }
 
-        if(this.getLength() < (this.inputSamplerate/10)){
-            this.isAccPlay == false;
+        if(this.getLength() < (this.inputSamplerate/10) && this.isAccPlay == true){
+            this.isAccPlay = false;
         }
 
         while(this.playBuffer.length < this.playBufLen){
@@ -70,9 +69,6 @@ class JitterBuffer {
             }
         }
 
-        if(this.isAccPlay == true){
-            this.extractBuffer(this.processBufSize);
-        }
     }
 
     push(buf){
@@ -86,6 +82,7 @@ class JitterBuffer {
     }
     
     pop(){
+
         let buf = null;
         if(this.playBuffer.length > 0){
             buf = this.playBuffer.shift();
@@ -98,6 +95,12 @@ class JitterBuffer {
             }
         } 
         this.appendToPlayBuffer();
+
+
+        if(this.isAccPlay == true){
+            console.log("Drop a audio frame");
+           this.extractBuffer(this.processBufSize);
+       }
         
         if(buf == null && this.stashLastFrame != null){
             console.log("repeat audio frame!!")
