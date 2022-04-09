@@ -98,8 +98,11 @@ class JitterBuffer {
 
 
         if(this.isAccPlay == true){
-            console.log("Drop a audio frame");
+           console.log("Drop a audio frame");
            this.extractBuffer(this.processBufSize);
+           if(this.getLength() < (this.inputSamplerate/10)){
+            this.isAccPlay = false;
+           }
        }
         
         if(buf == null && this.stashLastFrame != null){
