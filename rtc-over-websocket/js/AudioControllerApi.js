@@ -52,7 +52,7 @@
       this.silence = new Float32Array(this.config.codec.bufferSize);
       this.delayDet = delayDet;
 
-      this.jitterBuffer = new JitterBuffer(2,48000,48000,1024,null);
+      this.jitterBuffer = new JitterBuffer(2,audioContext.sampleRate,audioContext.sampleRate,1024,null);
 
       this.pushDelay=0;
     },
@@ -92,6 +92,8 @@
               noiseSuppression: true,
               autoGainControl: true,
               echoCancellation: true,
+              sampleRate: 48000,
+              channelCount: 1
             },
             video: false,
           },
