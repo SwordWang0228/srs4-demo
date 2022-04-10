@@ -135,9 +135,9 @@
               }
             };
 
-            _this.audioInput.connect(audioContext.destination);
+            _this.audioInput.connect(_this.recorder);
             //_this.gainNode.connect(_this.recorder);
-            //_this.recorder.connect(audioContext.destination);
+            _this.recorder.connect(audioContext.destination);
           
 
             //_this.biquadFilter.connect(audioContext.destination);
