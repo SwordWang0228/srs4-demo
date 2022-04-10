@@ -11,7 +11,10 @@
     },
   };
 
-  var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  var audioContext = new (window.AudioContext || window.webkitAudioContext)({
+    latencyHint: "playback",
+    sampleRate: 48000
+  });
 
   //必须要有这句，避免出现The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page.
   document.querySelector("button").addEventListener("click", function () {
@@ -48,7 +51,7 @@
       this.silence = new Float32Array(this.config.codec.bufferSize);
       this.delayDet = delayDet;
 
-      this.jitterBuffer = new JitterBuffer(2,audioContext.sampleRate,audioContext.sampleRate,1024,null);
+      this.jitterBuffer = new JitterBuffer(2,audioContext.sampleRate,audioContext.sampleRate,this.config.codec.bufferSize,null);
 
       this.pushDelay=0;
     },
@@ -95,8 +98,8 @@
             _this.stream = stream;
             _this.audioInput = audioContext.createMediaStreamSource(stream);
             // ganiNode https://developer.mozilla.org/en-US/docs/Web/API/GainNode
-            _this.gainNode = audioContext.createGain();  
-            _this.gainNode.gain.value = 0.7;
+            //_this.gainNode = audioContext.createGain();  
+           // _this.gainNode.gain.value = 0.5;
 
             // 滤波器
             // _this.biquadFilter = audioContext.createBiquadFilter();
@@ -117,7 +120,7 @@
                 resampled = _this.sampler.resampler(e.inputBuffer.getChannelData(0));
               }
               
- 
+              //console.log(resampled.length);
               var packets = _this.encoder.encode_float(resampled);
               for (var i = 0; i < packets.length; i++) {
                 let audioMsg = {
@@ -126,15 +129,15 @@
                   samplerate: _this.config.codec.sampleRate,
                   data: packets[i],
                 };
-                snCount++;
+                //snCount++;
                 //console.log(audioMsg);
                 socket.emit("audio", audioMsg);
               }
             };
 
-            _this.audioInput.connect(_this.gainNode);
-            _this.gainNode.connect(_this.recorder);
-            _this.recorder.connect(audioContext.destination);
+            _this.audioInput.connect(audioContext.destination);
+            //_this.gainNode.connect(_this.recorder);
+            //_this.recorder.connect(audioContext.destination);
           
 
             //_this.biquadFilter.connect(audioContext.destination);
@@ -200,18 +203,22 @@
     
     this.scriptNode = audioContext.createScriptProcessor(this.config.codec.bufferSize,1,1 );
     this.scriptNode.onaudioprocess = function (e) {
+      //console.log(e);
+      
 
       let buf =  _this.jitterBuffer.pop();
+
+      //console.log(buf.length);
       if(buf != null) {
         e.outputBuffer.getChannelData(0).set(buf);
       } else {
         e.outputBuffer.getChannelData(0).set(_this.silence);
       }
     };
-    this.gainNode = audioContext.createGain();
-    this.scriptNode.connect(this.gainNode);
-    this.gainNode.connect(audioContext.destination);
-    this.gainNode.gain.value = 1;
+    //this.gainNode = audioContext.createGain();
+    this.scriptNode.connect(audioContext.destination);
+    //this.gainNode.connect(audioContext.destination);
+   // this.gainNode.gain.value = 1;
 
   };
   
@@ -238,12 +245,19 @@
   };
 
   AudioControllerApi.Player.prototype.stop = function () {
-    this.audioQueue = null;
-    this.scriptNode.disconnect();
-    this.scriptNode = null;
-    this.gainNode.disconnect();
-    this.gainNode = null;
+    //this.audioQueue = null;
+    // this.scriptNode.disconnect();
+    // this.scriptNode = null;
+    //this.gainNode.disconnect();
+    //this.gainNode = null;
 
-    //close socket ?
+
+    if (this.scriptNode) {
+      this.scriptNode.disconnect();
+      this.scriptNode = null;
+    }
+
+
+    this.parentSocket.close();
   };
 })(window);
