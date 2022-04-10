@@ -43,7 +43,7 @@ class SocketHandler {
             //console.log("远端估计时间:"+ msg.dts + ", 实际时间:"+this.getTimestamp()+",计算平均延迟:"+delay+",即时延迟:" + (this.getTimestamp()-msg.dts)/2);
             this.handlermap.forEach((value,key)=>{
                 if(key == value.socketId && key != this.socketId){
-                    value.sendAudioMessage(msg.data,this.socketId,delay);
+                    value.sendAudioMessage(msg.data,this.socketId,delay,msg.samplerate,this.userName);
                 }
                 
             });
@@ -72,16 +72,17 @@ class SocketHandler {
 
     }
 
-    sendAudioMessage(data,socketId,delay){
+    sendAudioMessage(data,socketId,delay,samplerate,userName){
         if(this.isSync == false){
             return;
         }
         let audioMsg = {
             sts:this.getTimestamp(),
             dts:this.delayDet.getRemoteTime(this.getTimestamp()),
-            sn: 1,
+            samplerate: samplerate,
             data: data,
             id:socketId,
+            name:userName,
             delay:delay
           };
         this.socket.emit('audio', audioMsg);

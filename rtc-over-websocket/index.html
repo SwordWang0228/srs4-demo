@@ -10,6 +10,18 @@
   <button onclick="login()">Login</button>
   <br />
   <br />
+
+  <div>
+    <label for="audio">通话音质选择:</label>
+    <select id="audio_mode">
+      <option value="weak">弱网</option>
+      <option value="call">通话</option>
+      <option value="live" selected="selected">直播</option>
+    </select>
+  </div>
+
+  <br />
+  <br />
   <button onclick="start()">Start Comm</button>
   <button onclick="stop()">Stop Comm</button>
   <br />
@@ -49,10 +61,13 @@
         bufferSize: 1024
       },
     };
-    var delayDet = new DelayDetection();
-    var streamer = new AudioControllerApi.Streamer(defaultConfig, socket, delayDet);
 
+
+    var delayDet = new DelayDetection();
+    var streamer = null;
     var PlayerHandler = new Map();
+
+   
 
     //var player = new AudioControllerApi.Player(defaultConfig, socket, delayDet);
 
@@ -80,6 +95,34 @@
       //   isPlaying = true;e
       // }
       if (isStream == false) {
+
+        let configLive = {
+          codec: {
+            sampleRate: 48000,
+            channels: 1,
+            app: 2049,
+            frameDuration: 20,
+            bufferSize: 1024
+          },
+        };
+
+        let configCall = {
+          codec: {
+            sampleRate: 24000,
+            channels: 1,
+            app: 2049,
+            frameDuration: 20,
+            bufferSize: 1024
+          },
+        };
+        if(document.getElementById("audio_mode").value == "live"){
+          streamer = new AudioControllerApi.Streamer(configLive, socket, delayDet);
+        }else if(document.getElementById("audio_mode").value == "call"){
+          streamer = new AudioControllerApi.Streamer(configCall, socket, delayDet);
+        }else{
+          streamer = new AudioControllerApi.Streamer(defaultConfig, socket, delayDet);
+        }
+        
         streamer.start();
         isStream = true;
       }
@@ -89,6 +132,7 @@
     function start() {
       if(isLogin == false){
         window.alert("请先登入");
+        console.log(document.getElementById("audio_mode").value);
         return;
       }
       SyncTimer = setInterval(function () { sendSyncReqest() }, 1000);
@@ -133,7 +177,7 @@
     function myTimer() {
       let info = "";
       PlayerHandler.forEach((value,key)=>{
-          info = info+key+",&nbsp;&nbsp;delay:"+(delayDet.getDelay()+value.pushDelay)+",buffer len:"+value.getStashBufLen().getLength()+"<br />";
+          info = info+value.userName +":&nbsp;&nbsp;网络状况(0-30:好,30-80:中,>80:差):"+(delayDet.getDelay()+value.pushDelay)+",通话延迟:"+Math.floor(value.getStashBufLen().getLength()/48)+"ms"+"<br />";
       });
       document.getElementById("info").innerHTML = info;
         
@@ -141,7 +185,7 @@
 
     socket.on("audio", function (msg) {
       if(PlayerHandler.has(msg.id) == false){
-         let player = new AudioControllerApi.Player(defaultConfig, socket, delayDet);
+         let player = new AudioControllerApi.Player(defaultConfig, socket, delayDet,msg.name,msg.samplerate);
          player.start();
          PlayerHandler.set(msg.id,player);
       }
@@ -165,7 +209,6 @@
 
     socket.on("disconnect", () => {
       console.log("服务器断开");
-
       stop();
     });
 

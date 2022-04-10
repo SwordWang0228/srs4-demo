@@ -21,34 +21,30 @@
   });
 
   var AudioControllerApi = (global.AudioControllerApi = {
-    Player: function (config, socket, delayDet) {
+    Player: function (config, socket, delayDet,userName,samplerate) {
       this.config = config || {};
       this.config.codec = this.config.codec || defaultConfig.codec;
       this.config.server = this.config.server || defaultConfig.server;
       console.log("player samplerate:" + audioContext.sampleRate);
-      this.sampler = new Resampler(
-        this.config.codec.sampleRate,
-        audioContext.sampleRate,
-        1,
-        this.config.codec.bufferSize
-      );
-      this.samplerFast = new Resampler(
-        this.config.codec.sampleRate,
-        Math.floor(audioContext.sampleRate * 0.8),
-        1,
-        this.config.codec.bufferSize
-      );
-      this.samplerSlow = new Resampler(
-        this.config.codec.sampleRate,
-        Math.floor(audioContext.sampleRate * 1.2),
-        1,
-        this.config.codec.bufferSize
-      );
+      this.sampler = new Resampler(samplerate,audioContext.sampleRate,1,this.config.codec.bufferSize);
+      this.userName = userName;
+      this.samplerate = samplerate;
+
+      // this.samplerFast = new Resampler(
+      //   this.config.codec.sampleRate,
+      //   Math.floor(audioContext.sampleRate * 0.8),
+      //   1,
+      //   this.config.codec.bufferSize
+      // );
+      // this.samplerSlow = new Resampler(
+      //   this.config.codec.sampleRate,
+      //   Math.floor(audioContext.sampleRate * 1.2),
+      //   1,
+      //   this.config.codec.bufferSize
+      // );
+
       this.parentSocket = socket;
-      this.decoder = new OpusDecoder(
-        this.config.codec.sampleRate,
-        this.config.codec.channels
-      );
+      this.decoder = new OpusDecoder( this.samplerate,1);
       this.silence = new Float32Array(this.config.codec.bufferSize);
       this.delayDet = delayDet;
 
@@ -68,13 +64,11 @@
 
       this.config = config || {};
       this.config.codec = this.config.codec || defaultConfig.codec;
-      this.sampler = new Resampler(
-        audioContext.sampleRate,
-        this.config.codec.sampleRate,
-        1,
-        this.config.codec.bufferSize
-      );
+
+      this.sampler = new Resampler(audioContext.sampleRate,this.config.codec.sampleRate,1,this.config.codec.bufferSize);
+
       this.parentSocket = socket;
+
       this.encoder = new OpusEncoder(
         this.config.codec.sampleRate,
         this.config.codec.channels,
@@ -101,27 +95,35 @@
             _this.stream = stream;
             _this.audioInput = audioContext.createMediaStreamSource(stream);
             // ganiNode https://developer.mozilla.org/en-US/docs/Web/API/GainNode
-            _this.gainNode = audioContext.createGain();
+            _this.gainNode = audioContext.createGain();  
+            _this.gainNode.gain.value = 0.7;
+
             // 滤波器
-            _this.biquadFilter = audioContext.createBiquadFilter();
-            _this.biquadFilter.type = "lowpass";
-            _this.biquadFilter.frequency.setValueAtTime(2000,audioContext.currentTime);
+            // _this.biquadFilter = audioContext.createBiquadFilter();
+            // _this.biquadFilter.type = "lowpass";
+            // _this.biquadFilter.frequency.setValueAtTime(2000,audioContext.currentTime);
       
             // 可以用AudioWorkletProcessor代替，https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletNode
             _this.recorder = audioContext.createScriptProcessor(_this.config.codec.bufferSize,1,1);
 
+      
+
             //encode
             _this.recorder.onaudioprocess = function (e) {
-              var resampled = _this.sampler.resampler(
-                e.inputBuffer.getChannelData(0)
-              );
+              var resampled;
+              if(audioContext.sampleRate == _this.config.codec.sampleRate){
+                resampled = e.inputBuffer.getChannelData(0);
+              }else{
+                resampled = _this.sampler.resampler(e.inputBuffer.getChannelData(0));
+              }
+              
  
               var packets = _this.encoder.encode_float(resampled);
               for (var i = 0; i < packets.length; i++) {
                 let audioMsg = {
                   sts:getTimestamp(),
                   dts: delayDet.getRemoteTime(getTimestamp()),
-                  sn: snCount,
+                  samplerate: _this.config.codec.sampleRate,
                   data: packets[i],
                 };
                 snCount++;
@@ -132,8 +134,10 @@
 
             _this.audioInput.connect(_this.gainNode);
             _this.gainNode.connect(_this.recorder);
-            _this.recorder.connect(_this.biquadFilter);
-            _this.biquadFilter.connect(audioContext.destination);
+            _this.recorder.connect(audioContext.destination);
+          
+
+            //_this.biquadFilter.connect(audioContext.destination);
 
           },
           onError || _this.onError
@@ -207,7 +211,7 @@
     this.gainNode = audioContext.createGain();
     this.scriptNode.connect(this.gainNode);
     this.gainNode.connect(audioContext.destination);
-    this.gainNode.gain.value = 0.7;
+    this.gainNode.gain.value = 1;
 
   };
   
@@ -217,7 +221,13 @@
     this.pushDelay = msg.delay;
     //console.log(msg);
     //console.log("远端估计时间:"+ msg.dts + ", 实际时间:"+getTimestamp()+",计算平均延迟:"+delayDet.getDelay()+",即时延迟:" + (getTimestamp()-msg.dts)/2);
-    this.jitterBuffer.push(this.sampler.resampler(this.decoder.decode_float(msg.data)));
+    let decodeBuf = this.decoder.decode_float(msg.data);
+    if(this.samplerate == audioContext.sampleRate){
+      this.jitterBuffer.push(decodeBuf);
+    }else{
+      this.jitterBuffer.push(this.sampler.resampler(decodeBuf));
+    }
+    
   };
   AudioControllerApi.Player.prototype.getVolume = function () {
     return this.gainNode ? this.gainNode.gain.value : "Stream not started yet";
