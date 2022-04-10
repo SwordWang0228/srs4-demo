@@ -98,8 +98,8 @@
             _this.stream = stream;
             _this.audioInput = audioContext.createMediaStreamSource(stream);
             // ganiNode https://developer.mozilla.org/en-US/docs/Web/API/GainNode
-            //_this.gainNode = audioContext.createGain();  
-           // _this.gainNode.gain.value = 0.5;
+            _this.gainNode = audioContext.createGain();  
+            _this.gainNode.gain.value = 1;
 
             // 滤波器
             // _this.biquadFilter = audioContext.createBiquadFilter();
@@ -135,8 +135,8 @@
               }
             };
 
-            _this.audioInput.connect(_this.recorder);
-            //_this.gainNode.connect(_this.recorder);
+            _this.audioInput.connect(_this.gainNode);
+            _this.gainNode.connect(_this.recorder);
             _this.recorder.connect(audioContext.destination);
           
 
@@ -215,10 +215,10 @@
         e.outputBuffer.getChannelData(0).set(_this.silence);
       }
     };
-    //this.gainNode = audioContext.createGain();
-    this.scriptNode.connect(audioContext.destination);
-    //this.gainNode.connect(audioContext.destination);
-   // this.gainNode.gain.value = 1;
+    this.gainNode = audioContext.createGain();
+    this.scriptNode.connect(this.gainNode);
+    this.gainNode.connect(audioContext.destination);
+    this.gainNode.gain.value = 1;
 
   };
   
@@ -251,7 +251,10 @@
     //this.gainNode.disconnect();
     //this.gainNode = null;
 
-
+    if (this.gainNode) {
+      this.gainNode.disconnect();
+      this.gainNode = null;
+    }
     if (this.scriptNode) {
       this.scriptNode.disconnect();
       this.scriptNode = null;
