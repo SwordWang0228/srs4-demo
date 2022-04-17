@@ -3,8 +3,7 @@ TARGET  := libaec.a
 
 #compile and lib parameter
 CC      := emcc
-AR      = ar
-
+AR      = emar
 #source file
 SOURCE  := $(wildcard *.c) $(wildcard *.cpp)
 OBJS    := $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCE)))

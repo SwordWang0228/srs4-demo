@@ -44,7 +44,7 @@ EMSCRIPTEN_KEEPALIVE int bufferFarend(long aecmHandler, short* farend, int nrOfS
 }
 
 
-EMSCRIPTEN_KEEPALIVE short* aecmProcess(long aecmHandler, const shor* nearendNoisy, int nearenNoisyLen , const short* nearendClean, short* nrOfSamples, short* msInSndCardBuf) {
+EMSCRIPTEN_KEEPALIVE short* aecmProcess(long aecmHandler, short* nearendNoisy, int nearenNoisyLen , short* nearendClean, short* nrOfSamples, short* msInSndCardBuf) {
 
 	int16_t *arrNearendNoisy = nearendNoisy;
 	int16_t *arrNearendClean = nearendClean;
