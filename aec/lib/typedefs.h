@@ -14,6 +14,7 @@
 #ifndef WEBRTC_TYPEDEFS_H_
 #define WEBRTC_TYPEDEFS_H_
 
+#define WEBRTC_LINUX
 // For access to standard POSIXish features, use WEBRTC_POSIX instead of a
 // more specific macro.
 #if defined(WEBRTC_MAC) || defined(WEBRTC_LINUX) || \
@@ -52,7 +53,9 @@
 #define WEBRTC_ARCH_32_BITS
 #define WEBRTC_ARCH_LITTLE_ENDIAN
 #else
-#error Please add support for your architecture in typedefs.h
+//#error Please add support for your architecture in typedefs.h
+#define WEBRTC_ARCH_64_BITS
+#define WEBRTC_ARCH_LITTLE_ENDIAN
 #endif
 
 #if !(defined(WEBRTC_ARCH_LITTLE_ENDIAN) ^ defined(WEBRTC_ARCH_BIG_ENDIAN))

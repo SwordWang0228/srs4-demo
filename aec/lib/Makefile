@@ -2,7 +2,7 @@
 TARGET  := libaec.a
 
 #compile and lib parameter
-CC      := gcc
+CC      := emcc
 AR      = ar
 
 #source file
