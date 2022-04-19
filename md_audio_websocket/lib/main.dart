@@ -46,7 +46,6 @@ class _MyHomePageState extends State<MyHomePage> {
   final int tSampleRate = 44000;
   final RecorderStream _recorder = RecorderStream();
   final PlayerStream _player = PlayerStream();
-  List<Uint8List> _micChunks = [];
 
   bool _isRecording = false;
   bool _isPlaying = false;
@@ -159,19 +158,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> initRecorder() async {
-    // resampleInit(resampleParam, 44100, 8000, CHANNEL_OUT_MONO);
     int prevTime = DateTime.now().millisecondsSinceEpoch;
-    // await _recorder.audioStream.transform().cast<Uint8List>();
     _audioStream = _recorder.audioStream.listen((data) {
-      // Float32List pData = data.buffer.asFloat32List();
-      // Int16List newData = resampleProcess(resampleParam, pData);
-
-      if (_isPlaying) {
-        _player.writeChunk(data);
-      } else {
-        _micChunks.add(data);
-      }
-
       int nowTime = DateTime.now().millisecondsSinceEpoch;
 
       print("audioStream ${data}");
@@ -181,8 +169,8 @@ class _MyHomePageState extends State<MyHomePage> {
       Map audioMsg = {
         "sts": nowTime,
         "dts": DelayDetection.ins().getRemoteTime(nowTime),
-        "sn": snCount,
         "data": data,
+        "samplerate": "48000"
       };
       snCount++;
       if(socket != null) {
@@ -211,18 +199,12 @@ class _MyHomePageState extends State<MyHomePage> {
     await Future.wait([
       _recorder.initialize(),
       _player.initialize(),
+      _player.start()
     ]);
   }
 
   void _play() async {
     await _player.start();
-
-    if (_micChunks.isNotEmpty) {
-      for (var chunk in _micChunks) {
-        await _player.writeChunk(chunk);
-      }
-      _micChunks.clear();
-    }
   }
 
   void initSocket() {
@@ -230,18 +212,19 @@ class _MyHomePageState extends State<MyHomePage> {
         IO.OptionBuilder().enableForceNew().enableAutoConnect().setTransports(['websocket']).setTimeout(5000).build());
     socket!.onConnect((_) {
       Map syncReqest = {'sts': DateTime.now().millisecondsSinceEpoch};
+      socket!.emit('login', { "userName": "flutterClient" });
       socket!.emit('SyncReqest', syncReqest);
       setState(() { });
     });
     socket!.onDisconnect((_) => print('disconnect'));
-
-    socket!.on('SyncReqest', (msg) {
-      print('>>>>> SyncReqest ${msg} >>>>>>');
-      int nowTime = DateTime.now().millisecondsSinceEpoch;
-      DelayDetection.ins().updateTimestamp(msg['sts'], null, nowTime);
-      Map syncRespone = {'sts': nowTime};
-      socket!.emit('SyncResponse', syncRespone);
-    });
+    //
+    // socket!.on('SyncReqest', (msg) {
+    //   print('>>>>> SyncReqest ${msg} >>>>>>');
+    //   int nowTime = DateTime.now().millisecondsSinceEpoch;
+    //   DelayDetection.ins().updateTimestamp(msg['sts'], null, nowTime);
+    //   Map syncRespone = {'sts': nowTime};
+    //   socket!.emit('SyncResponse', syncRespone);
+    // });
 
     socket!.on('SyncResponse', (msg) {
       DelayDetection.ins().updateTimestamp(msg['sts'], null, DateTime.now().millisecondsSinceEpoch);
@@ -249,13 +232,13 @@ class _MyHomePageState extends State<MyHomePage> {
     });
 
     int prevTime = DateTime.now().millisecondsSinceEpoch;
-    socket!.on('audio', (msg) {
+    socket!.on('audio', (msg) async {
       int nowTime = DateTime.now().millisecondsSinceEpoch;
       DelayDetection.ins().updateTimestamp(msg['sts'], msg['dts'], nowTime);
       // print('>>>>> audio ${nowTime - prevTime}ms send ${msg['data'].length} >>>>>>');
       prevTime = nowTime;
-      // print('>>>>> audio ${msg} >>>>>>');
-      // print('>>>>> audio ${msg['data'].length} >>>>>>');
+      _player.writeChunk(msg['data'] as Uint8List);
+      // print('>>>>> audio ${msg['samplerate']} >>>>>>');
       // print('>>>>> audio ${msg['data']} >>>>>>');
     });
 

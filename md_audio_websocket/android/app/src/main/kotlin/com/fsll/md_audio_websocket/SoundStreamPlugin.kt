@@ -64,7 +64,7 @@ public class SoundStreamPlugin : FlutterPlugin,
 
     //========= Recorder's vars
     private val mRecordFormat = AudioFormat.ENCODING_PCM_16BIT
-    private var mRecordSampleRate = 8000 // 16Khz
+    private var mRecordSampleRate = 48000 // 16Khz
     private var mRecorderBufferSize = 4096
     private var minBufferSize = 1024
     private var prevTimestamp = Date().time
@@ -77,7 +77,7 @@ public class SoundStreamPlugin : FlutterPlugin,
 
     //========= Player's vars
     private var mAudioTrack: AudioTrack? = null
-    private var mPlayerSampleRate = 8000 // 16Khz
+    private var mPlayerSampleRate = 48000 // 16Khz
     private var mPlayerBufferSize = 10240
     private var mPlayerFormat: AudioFormat = AudioFormat.Builder()
         .setEncoding(mRecordFormat)
@@ -266,19 +266,14 @@ public class SoundStreamPlugin : FlutterPlugin,
     private fun pushPlayerChunk(chunk: ByteArray, result: Result) {
         try {
             println("未解码长度::${chunk.size}")
-            val decoded: ByteArray? = codec.decode(chunk, Constants.FrameSize._160())
-            println("解码长度::${decoded!!.size}")
-            if(decoded != null) {
-                val buffer = ByteBuffer.wrap(decoded)
-                val shortBuffer = ShortBuffer.allocate(chunk.size / 2)
-                shortBuffer.put(buffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer())
-                val shortChunk = shortBuffer.array()
-
-                mAudioTrack?.write(shortChunk, 0, shortChunk.size)
-                result.success(true)
-            } else {
-                result.error("-10", "解密空的", "解密内容是空的")
-            }
+            val decoded: ByteArray? = codec.decode(chunk, Constants.FrameSize._960())
+            val buffer = ByteBuffer.wrap(decoded)
+            val shortBuffer = ShortBuffer.allocate(decoded!!.size / 2)
+            shortBuffer.put(buffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer())
+            val shortChunk = shortBuffer.array()
+            println("解码长度6::${shortChunk.size} $shortChunk")
+            mAudioTrack?.write(shortChunk, 0, shortChunk.size)
+            result.success(true)
         } catch (e: Exception) {
             result.error(SoundStreamErrors.FailedToWriteBuffer.name, "写入失败 Failed to write Player buffer", e.message)
         }
@@ -405,7 +400,7 @@ public class SoundStreamPlugin : FlutterPlugin,
         if (!permissionToRecordAudio) {
             return
         }
-        mRecorder = AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, mRecordSampleRate, mInChannels, mRecordFormat, mRecorderBufferSize)
+        mRecorder = AudioRecord(MediaRecorder.AudioSource.MIC, mRecordSampleRate, mInChannels, mRecordFormat, mRecorderBufferSize)
         if (mRecorder != null) {
             mListener = createRecordListener()
             println("mPeriodFrames $minBufferSize")
@@ -417,12 +412,11 @@ public class SoundStreamPlugin : FlutterPlugin,
     }
 
     private fun initializeCodec() {
-        codec.encoderInit(Constants.SampleRate._8000(), Constants.Channels.mono(), Constants.Application.audio())
-        codec.decoderInit(Constants.SampleRate._8000(), Constants.Channels.mono())
+        codec.encoderInit(Constants.SampleRate._48000(), Constants.Channels.mono(), Constants.Application.audio())
+        codec.decoderInit(Constants.SampleRate._48000(), Constants.Channels.mono())
         codec.encoderSetComplexity(Constants.Complexity.instance(5))                // set the complexity
         codec.encoderSetBitrate(Constants.Bitrate.max())                      // set the bitrate
     }
-
 
     private fun createRecordListener(): OnRecordPositionUpdateListener? {
         return object : OnRecordPositionUpdateListener {
@@ -432,7 +426,7 @@ public class SoundStreamPlugin : FlutterPlugin,
 
             override fun onPeriodicNotification(recorder: AudioRecord) {
                 var nowTime = Date().time
-                println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> between timer ${nowTime - prevTimestamp}ms")
+                println("每次取值间隔 ${nowTime - prevTimestamp}ms")
                 // 8000采样率，每20ms 160采集点，获取的数据不超过320，实际是244
                 // codec 编码是每20ms的数据进行编码
                 prevTimestamp = nowTime
@@ -443,6 +437,7 @@ public class SoundStreamPlugin : FlutterPlugin,
                 if (shortOut <= 0) {
                     return
                 }
+                println("每次取的量:$shortOut")
                 val readData: ShortArray = data.copyOfRange(0, shortOut)
                 // 插入队列
                 audioDataQueue = if(audioDataQueue == null) {
@@ -455,18 +450,20 @@ public class SoundStreamPlugin : FlutterPlugin,
                 }
                 // 取出队列160个并发送到flutter
                 // 把采集的数据进行队列处理，每超过160就进行一次推流，不够等凑齐，超过就while循环推送
-                while (audioDataQueue!!.size >= 160) {
-                    val temp: ShortArray = ShortArray(audioDataQueue!!.size - 160)
-                    val willSend: ShortArray = audioDataQueue!!.sliceArray(IntRange(0, 159))
-                    audioDataQueue!!.copyInto(temp, 0, 160, audioDataQueue!!.size - 1)
-                    audioDataQueue = temp
+                while (audioDataQueue!!.size >= 960) {
+                    val willSend: ShortArray = audioDataQueue!!.sliceArray(0..959)
                     // 编码并发送
-                    println("未编码长度::${willSend!!.size}")
-                    val encoded: ShortArray? = codec.encode(willSend, Constants.FrameSize._160())
-                    println("编码长度::${encoded!!.size}")
-                    val byteBuffer = ByteBuffer.allocate(encoded!!.size * 2)
+                    println("未编码长度::${willSend.size} $willSend")
+                    val encoded: ShortArray? = codec.encode(willSend, Constants.FrameSize._960())
+                    println("已编码长度::${encoded!!.size} $encoded")
+                    val byteBuffer = ByteBuffer.allocate(encoded.size * 2)
                     byteBuffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(encoded)
                     sendEventMethod("dataPeriod", byteBuffer.array())
+                    if(audioDataQueue!!.size > 960) {
+                        val temp = ShortArray(audioDataQueue!!.size - 960)
+                        audioDataQueue!!.copyInto(temp, 0, 960, audioDataQueue!!.size - 1)
+                        audioDataQueue = temp
+                    }
                 }
             }
         }
