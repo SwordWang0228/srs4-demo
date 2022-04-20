@@ -56,9 +56,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   IO.Socket? socket;
 
-  int snCount = 1;
-
-
   @override
   void initState() {
     // TODO: implement initState
@@ -81,64 +78,58 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: const Text("audio_websocket_demo"),
       ),
-      body: Center(child: Container()),
-      floatingActionButton: SizedBox(
-        height: 100,
-        width: MediaQuery.of(context).size.width,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-
-            FloatingActionButton(
-              backgroundColor: (socket?.connected ?? false) ? Colors.green : Colors.blue,
-              onPressed: () {
-                if (_isPlaying) {
-                  _player.stop();
-                } else {
-                  _play();
-                }
-                setState(() {});
-              },
-              tooltip: 'socket',
-              child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
-            ),
-            const VerticalDivider(
-              width: 20,
-              color: Colors.transparent,
-            ),
-            FloatingActionButton(
-              backgroundColor: (socket?.connected ?? false) ? Colors.green : Colors.blue,
-              onPressed: () {
-                if (socket?.connected ?? false) {
-                  stopSocket();
-                } else {
-                  initSocket();
-                }
-                setState(() {});
-              },
-              tooltip: 'socket',
-              child: Icon((socket?.connected ?? false) ? Icons.link : Icons.link_off),
-            ),
-            const VerticalDivider(
-              width: 20,
-              color: Colors.transparent,
-            ),
-            FloatingActionButton(
-              backgroundColor: !_isRecording ? Colors.blue : Colors.red,
-              onPressed: () {
-                if (!_isRecording) {
-                  startRecord();
-                } else {
-                  stopRecord();
-                }
-                setState(() {});
-              },
-              tooltip: 'record',
-              child: Icon(!_isRecording ? Icons.record_voice_over : Icons.stop_rounded),
-            ),
-          ],
-        ),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      body: Center(child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FloatingActionButton(
+            backgroundColor: (socket?.connected ?? false) ? Colors.green : Colors.blue,
+            onPressed: () {
+              if (_isPlaying) {
+                _player.stop();
+              } else {
+                _play();
+              }
+              setState(() {});
+            },
+            tooltip: 'socket',
+            child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+          ),
+          const Divider(
+            height: 40,
+            color: Colors.transparent,
+          ),
+          FloatingActionButton(
+            backgroundColor: (socket?.connected ?? false) ? Colors.green : Colors.blue,
+            onPressed: () {
+              if (socket?.connected ?? false) {
+                stopSocket();
+              } else {
+                initSocket();
+              }
+              setState(() {});
+            },
+            tooltip: 'socket',
+            child: Icon((socket?.connected ?? false) ? Icons.link : Icons.link_off),
+          ),
+          const Divider(
+            height: 40,
+            color: Colors.transparent,
+          ),
+          FloatingActionButton(
+            backgroundColor: !_isRecording ? Colors.blue : Colors.red,
+            onPressed: () {
+              if (!_isRecording) {
+                startRecord();
+              } else {
+                stopRecord();
+              }
+              setState(() {});
+            },
+            tooltip: 'record',
+            child: Icon(!_isRecording ? Icons.record_voice_over : Icons.stop_rounded),
+          ),
+        ],
+      )),
     );
   }
 
@@ -163,7 +154,6 @@ class _MyHomePageState extends State<MyHomePage> {
       int nowTime = DateTime.now().millisecondsSinceEpoch;
 
       print("audioStream ${data}");
-      print('>>>>> audio ${nowTime - prevTime}ms send ${data.length} >>>>>>');
       prevTime = nowTime;
 
       Map audioMsg = {
@@ -172,14 +162,13 @@ class _MyHomePageState extends State<MyHomePage> {
         "data": data,
         "samplerate": "48000"
       };
-      snCount++;
       if(socket != null) {
+        print('>>>>> emit audio ${nowTime - prevTime}ms send ${data.length} >>>>>>');
         socket!.emit('audio', audioMsg);
       }
     });
 
     _recorderStatus = _recorder.status.listen((status) {
-      print("_recorderStatus $status");
       if (mounted) {
         setState(() {
           _isRecording = status == SoundStreamStatus.Playing;
@@ -199,7 +188,7 @@ class _MyHomePageState extends State<MyHomePage> {
     await Future.wait([
       _recorder.initialize(),
       _player.initialize(),
-      _player.start()
+      // _player.start()
     ]);
   }
 
@@ -226,6 +215,10 @@ class _MyHomePageState extends State<MyHomePage> {
     //   socket!.emit('SyncResponse', syncRespone);
     // });
 
+    socket!.on('error', (msg) {
+      print('>>>>> error $msg >>>>>>');
+    });
+
     socket!.on('SyncResponse', (msg) {
       DelayDetection.ins().updateTimestamp(msg['sts'], null, DateTime.now().millisecondsSinceEpoch);
       print('>>>>> SyncResponse ${msg} >>>>>>');
@@ -235,9 +228,10 @@ class _MyHomePageState extends State<MyHomePage> {
     socket!.on('audio', (msg) async {
       int nowTime = DateTime.now().millisecondsSinceEpoch;
       DelayDetection.ins().updateTimestamp(msg['sts'], msg['dts'], nowTime);
-      // print('>>>>> audio ${nowTime - prevTime}ms send ${msg['data'].length} >>>>>>');
+      // print('>>>>> on audio ${nowTime - prevTime}ms send ${msg['data'].length} >>>>>>');
       prevTime = nowTime;
-      _player.writeChunk(msg['data'] as Uint8List);
+      // 需要计算下speed, 根据delay时间去计算
+      _player.writeChunk(msg['data'] as Uint8List, speed: 1.0);
       // print('>>>>> audio ${msg['samplerate']} >>>>>>');
       // print('>>>>> audio ${msg['data']} >>>>>>');
     });
