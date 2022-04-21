@@ -33,8 +33,8 @@ class PlayerStream {
 
   /// Push audio [data] (PCM 16bit data) to player buffer as Uint8List
   /// to play audio. Chunks will be queued/scheduled to play sequentially
-  Future<dynamic> writeChunk(Uint8List data, {double? speed}) => _methodChannel
-      .invokeMethod("writeChunk", <String, dynamic>{"data": data, 'speed': speed});
+  Future<dynamic> writeChunk(Uint8List data) => _methodChannel
+      .invokeMethod("writeChunk", <String, dynamic>{"data": data});
 
   /// Current status of the [PlayerStream]
   Stream<SoundStreamStatus> get status => _playerStatusController.stream;

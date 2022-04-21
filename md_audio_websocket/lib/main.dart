@@ -188,7 +188,7 @@ class _MyHomePageState extends State<MyHomePage> {
     await Future.wait([
       _recorder.initialize(),
       _player.initialize(),
-      // _player.start()
+      _player.start()
     ]);
   }
 
@@ -228,10 +228,9 @@ class _MyHomePageState extends State<MyHomePage> {
     socket!.on('audio', (msg) async {
       int nowTime = DateTime.now().millisecondsSinceEpoch;
       DelayDetection.ins().updateTimestamp(msg['sts'], msg['dts'], nowTime);
-      // print('>>>>> on audio ${nowTime - prevTime}ms send ${msg['data'].length} >>>>>>');
+      print('>>>>> on audio ${nowTime - prevTime}ms ${nowTime - msg['dts']} send ${msg['data'].length} >>>>>>');
       prevTime = nowTime;
-      // 需要计算下speed, 根据delay时间去计算
-      _player.writeChunk(msg['data'] as Uint8List, speed: 1.0);
+      _player.writeChunk(msg['data'] as Uint8List);
       // print('>>>>> audio ${msg['samplerate']} >>>>>>');
       // print('>>>>> audio ${msg['data']} >>>>>>');
     });

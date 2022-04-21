@@ -264,34 +264,26 @@ public class SoundStreamPlugin : FlutterPlugin,
     // 接受buffer播放流
     private fun writeChunk(@NonNull call: MethodCall, @NonNull result: Result) {
         val data = call.argument<ByteArray>("data")
-        val speed = call.argument<Float>("speed")
         if (data != null) {
-            pushPlayerChunk(data, speed, result)
+            pushPlayerChunk(data, result)
         } else {
             result.error(SoundStreamErrors.FailedToWriteBuffer.name, "Failed to write Player buffer", "'data' is null")
         }
     }
 
     // 插入播放流buffer
-    private fun pushPlayerChunk(chunk: ByteArray, speed: Float?,  result: Result) {
+    private fun pushPlayerChunk(chunk: ByteArray, result: Result) {
         try {
-            val params: PlaybackParams? = mAudioTrack?.playbackParams
-            if(params != null && speed != null) {
-                params.speed = speed
-                mAudioTrack?.playbackParams = params
-            }
+            println("未解码长度::${chunk.size}")
             val decoded: ByteArray? = codec.decode(chunk, Constants.FrameSize._960())
             val buffer = ByteBuffer.wrap(decoded)
             val shortBuffer = ShortBuffer.allocate(decoded!!.size / 2)
             shortBuffer.put(buffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer())
             val shortChunk = shortBuffer.array()
-            val oldSize = mAudioTrack?.bufferSizeInFrames
-            mAudioTrack?.bufferSizeInFrames?.plus(shortChunk.size)
-            if (oldSize != null) {
-                mAudioTrack?.write(shortChunk, oldSize, shortChunk.size)
-            } else {
-                mAudioTrack?.write(shortChunk, 0, shortChunk.size)
-            }
+            println("解码长度6::${shortChunk.size}")
+            println("mAudioTrack?.bufferSizeInFrames 1::${mAudioTrack?.bufferSizeInFrames}")
+            mAudioTrack?.write(shortChunk, 0, shortChunk.size)
+            println("mAudioTrack?.bufferSizeInFrames 2::${mAudioTrack?.bufferSizeInFrames}")
             result.success(true)
         } catch (e: Exception) {
             result.error(SoundStreamErrors.FailedToWriteBuffer.name, "写入失败 Failed to write Player buffer", e.message)
