@@ -10,6 +10,11 @@
   <button onclick="login()">Login</button>
   <br />
   <br />
+  <video autoplay width="200" height="200" id="video"></video>
+  <video width="200" height="200" id="videoStream"></video>
+  <button onclick="streamVideo()">推送视频</button>
+  <button onclick="startPlayVideo()">播放视频</button>
+  <!-- <button id="play">play</button> -->
 
   <div>
     <label for="audio">通话音质选择:</label>
@@ -67,7 +72,7 @@
     var streamer = null;
     var PlayerHandler = new Map();
 
-
+    var chunks = [];
 
     //var player = new AudioControllerApi.Player(defaultConfig, socket, delayDet);
 
@@ -212,6 +217,49 @@
       console.log("服务器断开");
       stop();
     });
+
+    socket.on("video", function (msg) {
+      console.log(msg);
+      chunks.push(msg);
+    });
+
+
+
+    function streamVideo() {
+        let recorder = null;
+        //let chunks = [];
+        let video = document.getElementById("video");
+        // let videoStream = document.getElementById("videoStream");
+        // document.getElementById("play").addEventListener("click", start);
+        navigator.mediaDevices.getDisplayMedia({ video: true }).then(stream => {
+            video.srcObject = stream;
+            recorder = new MediaRecorder(stream);
+            recorder.start(100);
+            recorder.ondataavailable = event => {
+                //chunks.push(event.data);
+                socket.emit('video',event.data);
+                console.log(event.data);
+            };
+        }).catch(error => {
+            console.log(error);
+        });
+    }
+
+    function startPlayVideo() {
+      console.log("startPlayVideo");
+            try {
+                console.log("chunks", chunks);
+                let blob = new Blob(chunks, {
+                    type: 'video/mp4'
+                });
+                var url = window.URL.createObjectURL(blob);
+                videoStream.src = url;
+                console.log("videoStream", videoStream);
+                videoStream.play();
+            } catch (err) {
+                console.log("err", err.message);
+            }
+    }
 
   </script>
 </body>

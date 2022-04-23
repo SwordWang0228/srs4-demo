@@ -35,7 +35,7 @@ class SocketHandler {
             this.userName = body.userName;
             console.log('user login', this.userName);
     
-        })
+        });
     
         this.socket.on('audio', (msg) => {
             this.delayDet.updateTimestamp(msg.sts,msg.dts, this.getTimestamp());
@@ -47,8 +47,17 @@ class SocketHandler {
                 }
                 
             });
-            
+
+
         });
+
+        //video
+        this.socket.on('video', (msg) => {
+            //console.log('video msg', msg);
+
+            this.socket.broadcast.emit('video', msg);
+        });
+                    
     
         this.socket.on('SyncReqest', (msg) => {
             this.isSync = true;
@@ -103,6 +112,10 @@ class SocketHandler {
     getTimestamp() {
         return Date.now();
     }
+
+
+
+
 
 
 }
