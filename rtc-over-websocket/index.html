@@ -279,12 +279,12 @@
       var myVar = setInterval(function () { 
                         //let output = document.getElementById("output");
                         var canvas = document.createElement("canvas");
-      canvas.width = 360;
-      canvas.height = 240;
+      canvas.width = 480;
+      canvas.height = 360;
       canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
       var img2 = document.createElement("img");
       //var img = document.getElementById("target");
-      img2.src = canvas.toDataURL('image/png');
+      img2.src = canvas.toDataURL('image/jpeg');
       //output.prepend(img);                                  
       
       socket.emit('capture', img2.src);
