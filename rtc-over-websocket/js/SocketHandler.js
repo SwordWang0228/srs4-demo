@@ -57,7 +57,13 @@ class SocketHandler {
 
             this.socket.broadcast.emit('video', msg);
         });
-                    
+
+        //capture
+        this.socket.on('capture', (msg) => {
+            //console.log('video msg', msg);
+
+            this.socket.broadcast.emit('capture', msg);
+        });         
     
         this.socket.on('SyncReqest', (msg) => {
             this.isSync = true;

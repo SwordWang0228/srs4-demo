@@ -13,8 +13,11 @@
   <video autoplay width="200" height="200" id="video"></video>
   <video width="200" height="200" id="videoStream"></video>
   <button onclick="streamVideo()">推送视频</button>
-  <button onclick="startPlayVideo()">播放视频</button>
+  <button onclick="startPlayVideo()">不要点</button>
   <!-- <button id="play">play</button> -->
+  <button onclick="captureImage()">播放视频</button>
+  <!-- <div id="output"></div> -->
+  <img id="target" width="480" height="320"></img>
 
   <div>
     <label for="audio">通话音质选择:</label>
@@ -219,9 +222,18 @@
     });
 
     socket.on("video", function (msg) {
-      console.log(msg);
-      chunks.push(msg);
+      //console.log(msg);
+      //chunks.push(msg);
     });
+
+    var img = document.getElementById("target");
+    var count =0 ;
+    socket.on("capture", function (msg) {
+      //console.log("recieve image"+count++);
+     
+      img.src = msg;
+    });
+
 
 
 
@@ -234,11 +246,11 @@
         navigator.mediaDevices.getDisplayMedia({ video: true }).then(stream => {
             video.srcObject = stream;
             recorder = new MediaRecorder(stream);
-            recorder.start(100);
+            recorder.start(1000);
             recorder.ondataavailable = event => {
                 //chunks.push(event.data);
-                socket.emit('video',event.data);
-                console.log(event.data);
+                //socket.emit('video',event.data);
+                //console.log(event.data);
             };
         }).catch(error => {
             console.log(error);
@@ -260,6 +272,35 @@
                 console.log("err", err.message);
             }
     }
+
+    function captureImage(){
+
+
+      var myVar = setInterval(function () { 
+                        //let output = document.getElementById("output");
+                        var canvas = document.createElement("canvas");
+      canvas.width = 360;
+      canvas.height = 240;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      var img2 = document.createElement("img");
+      //var img = document.getElementById("target");
+      img2.src = canvas.toDataURL('image/png');
+      //output.prepend(img);                                  
+      
+      socket.emit('capture', img2.src);
+
+                                          
+                                          },200);
+
+    }
+
+    // function dataURItoBlob(dataURI){
+    //   var byteString;
+    //   if(dataURI.)
+    // }
+
+
+
 
   </script>
 </body>
