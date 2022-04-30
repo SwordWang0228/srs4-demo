@@ -52,6 +52,14 @@ app.get('/JitterBuffer.js', (req, res) => {
     res.sendFile(__dirname + '/js/JitterBuffer.js');
 });
 
+app.get('/mozjpeg_enc.js', (req, res) => {
+    res.sendFile(__dirname + '/js/mozjpeg_enc.js');
+});
+
+app.get('/mozjpeg_enc.wasm', (req, res) => {
+    res.sendFile(__dirname + '/js/mozjpeg_enc.wasm');
+});
+
 
 const userToSocketId = {};
 var handlermap = new Map();

@@ -1,4 +1,5 @@
-
+const { ImagePool } = require('@squoosh/lib');
+const imagePool = new ImagePool(4);
 class SocketHandler {
     constructor(socket,delayDet,handlermap){
         this.socket = socket;
@@ -52,16 +53,38 @@ class SocketHandler {
         });
 
         //video
-        this.socket.on('video', (msg) => {
-            //console.log('video msg', msg);
-
+        this.socket.on('video', async (msg) => {
             this.socket.broadcast.emit('video', msg);
         });
 
         //capture
-        this.socket.on('capture', (msg) => {
-            //console.log('video msg', msg);
-
+        this.socket.on('capture', async (msg) => {
+            // //console.log('video msg', msg);
+            // const start = new Date().getTime();
+            // const image = imagePool.ingestImage(msg);
+            // const preprocessOptions = {
+            //     //When both width and height are specified, the image resized to specified size.
+            //     // resize: {
+            //     //     width: 100,
+            //     //     height: 50,
+            //     // },
+            //     /*
+            //     //When either width or height is specified, the image resized to specified size keeping aspect ratio.
+            //     resize: {
+            //         width: 100,
+            //     }
+            //     */
+            // };
+            // await image.preprocess(preprocessOptions);
+            // const encodeOptions = {
+            //     mozjpeg: {
+            //         quality: 40,
+            //     },
+            // };
+            // const result = await image.encode(encodeOptions);
+            // const { extension, binary } = await image.encodedWith.mozjpeg;
+            // console.log('cost - ', new Date().getTime() - start)
+            // this.socket.broadcast.emit('capture', binary.buffer);
             this.socket.broadcast.emit('capture', msg);
         });         
     
