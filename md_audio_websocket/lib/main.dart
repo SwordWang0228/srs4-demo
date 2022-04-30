@@ -1,24 +1,21 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 import 'package:md_audio_websocket/DelayDetection.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:webview_flutter/webview_flutter.dart';
 import 'sound_stream/sound_stream.dart';
 
 Future<void> main() async {
   runApp(const MyApp());
 }
+
 const int CHANNEL_OUT_MONO = 4;
-// class ResampleParam {
-//   int? inputsamples;
-//   int? outputsamples;
-//   int channels = CHANNEL_OUT_MONO;
-//   int sum = 0;
-//   double? dis;
-//   List<double> databuffer = List.filled(3*CHANNEL_OUT_MONO, 0.0).toList();
-// }
+
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
@@ -56,15 +53,34 @@ class _MyHomePageState extends State<MyHomePage> {
 
   IO.Socket? socket;
 
+  late WebViewController webViewController;
+
+  late String sampleRate;
+
+  String? loginId;
+
+  late StateSetter infomationState;
+
+  String? onAudioString;
+  String? emitAudioString;
+
+  DateTime? syncReqestTime;
+
+  DateTime? syncSendResponseTime;
+  DateTime? syncResponseTime;
+
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
+    if (Platform.isAndroid) WebView.platform = SurfaceAndroidWebView();
+    initSocket();
     initRecorder();
   }
 
   @override
   void dispose() {
+    stopRecord();
     socket?.dispose();
     _recorderStatus?.cancel();
     _playerStatus?.cancel();
@@ -75,59 +91,130 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("audio_websocket_demo"),
-      ),
-      body: Center(child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      appBar: AppBar(title: const Text("音频直播"),),
+      body: SafeArea(
+          child: Stack(
         children: [
-          FloatingActionButton(
-            backgroundColor: (socket?.connected ?? false) ? Colors.green : Colors.blue,
-            onPressed: () {
-              if (_isPlaying) {
-                _player.stop();
-              } else {
-                _play();
-              }
-              setState(() {});
+          WebView(
+            initialUrl: 'https://audio-ws.openjianghu.org/',
+            javascriptMode: JavascriptMode.unrestricted,
+            onWebViewCreated: (WebViewController _webViewController) {
+              webViewController = _webViewController;
             },
-            tooltip: 'socket',
-            child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
-          ),
-          const Divider(
-            height: 40,
-            color: Colors.transparent,
-          ),
-          FloatingActionButton(
-            backgroundColor: (socket?.connected ?? false) ? Colors.green : Colors.blue,
-            onPressed: () {
-              if (socket?.connected ?? false) {
-                stopSocket();
-              } else {
-                initSocket();
-              }
-              setState(() {});
+            onProgress: (int progress) async {},
+            javascriptChannels: <JavascriptChannel>{
+              JavascriptChannel(
+                  name: 'audioWsApp',
+                  onMessageReceived: (JavascriptMessage message) async {
+                    print(">>>>>> message ${jsonDecode(message.message)}");
+                    Map result = jsonDecode(message.message);
+                    if (result['action'] == 'login') {
+                      if (result['value'] != null && result['value'] != '') {
+                        webViewController.runJavascript("alert('登录成功')");
+                        String audioMode = "var username = document.createElement(\"div\");"
+                            "username.innerHTML = \"登录用户：${result['value']}\";"
+                            "document.body.children[1].after(username);";
+                        webViewController.runJavascript(audioMode);
+                        socket!.emit('login', {"userName": result['value']});
+                        loginId = result['value'];
+                      } else {
+                        webViewController.runJavascript("alert('登录失败')");
+                      }
+                    }
+                    if (result['action'] == 'audioMode') {
+                      if (result['value'] == 'live') {
+                        sampleRate = "48000";
+                      } else if (result['value'] == 'call') {
+                        sampleRate = "24000";
+                      } else {
+                        sampleRate = "8000";
+                      }
+                      String sampleRateDiv = "var sampleRate = document.getElementById('sampleRateDiv');"
+                          "if(!sampleRate) { sampleRate = document.createElement(\"div\");"
+                          "document.getElementById(\"audio_mode\").after(sampleRate);"
+                          "sampleRate.id = 'sampleRateDiv';}"
+                          "sampleRate.innerHTML = \"当前采样率：$sampleRate\";";
+                      webViewController.runJavascript(sampleRateDiv);
+                    }
+                    if (result['action'] == 'startComm') {
+                      if (loginId == null || loginId == '') {
+                        webViewController.runJavascript("alert('请先登录')");
+                      } else if (socket?.connected ?? false) {
+                        syncReqestTime = DateTime.now();
+                        infomationState(() {});
+                        Map syncReqest = {'sts': syncReqestTime!.millisecondsSinceEpoch};
+                        socket!.emit('SyncReqest', syncReqest);
+                        webViewController.runJavascript("document.getElementById('status').innerHTML = 'Connected'");
+                        if (!_isRecording) {
+                          startRecord();
+                        }
+                      } else {
+                        webViewController.runJavascript("alert('连接失败')");
+                      }
+                    }
+                    if (result['action'] == 'stopComm') {
+                      webViewController.runJavascript("document.getElementById('status').innerHTML = 'Disconnected'");
+                      if (_isRecording) {
+                        stopRecord();
+                      }
+                    }
+                  })
             },
-            tooltip: 'socket',
-            child: Icon((socket?.connected ?? false) ? Icons.link : Icons.link_off),
-          ),
-          const Divider(
-            height: 40,
-            color: Colors.transparent,
-          ),
-          FloatingActionButton(
-            backgroundColor: !_isRecording ? Colors.blue : Colors.red,
-            onPressed: () {
-              if (!_isRecording) {
-                startRecord();
-              } else {
-                stopRecord();
-              }
-              setState(() {});
+            navigationDelegate: (NavigationRequest request) async {
+              return NavigationDecision.navigate;
             },
-            tooltip: 'record',
-            child: Icon(!_isRecording ? Icons.record_voice_over : Icons.stop_rounded),
+            onPageStarted: (String url) async {},
+            onPageFinished: (String url) async {
+              // add meta
+              String meta = "var oMeta = document.createElement('meta');"
+                  "oMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0,minimum-scale=1.0, user-scalable=0';"
+                  "oMeta.name = 'viewport';"
+                  "document.getElementsByTagName('head')[0].appendChild(oMeta);";
+              await webViewController.runJavascript(meta);
+              Future.delayed(const Duration(milliseconds: 300), () async {
+                // intercept login and btn
+                String loginListener =
+                    "document.body.children[1].onclick = (event) => { audioWsApp.postMessage(JSON.stringify({'action': 'login', value: document.getElementById('userName').value})) }";
+                await webViewController.runJavascript(loginListener);
+                String selectListener =
+                    "document.getElementById(\"audio_mode\").onchange = (event) => { audioWsApp.postMessage(JSON.stringify({'action': 'audioMode', value: document"
+                    ".getElementById(\"audio_mode\").value})) }";
+                await webViewController.runJavascript(selectListener);
+                String audioMode = "audioWsApp.postMessage(JSON.stringify({'action': 'audioMode', value: document.getElementById(\"audio_mode\").value}))";
+                await webViewController.runJavascript(audioMode);
+                String startComm = "document.getElementsByTagName('button')[1].onclick = (event) => { audioWsApp.postMessage(JSON.stringify({'action': 'startComm'})) }";
+                await webViewController.runJavascript(startComm);
+                String stopComm = "document.getElementsByTagName('button')[2].onclick = (event) => { audioWsApp.postMessage(JSON.stringify({'action': 'stopComm'})) }";
+                await webViewController.runJavascript(stopComm);
+              });
+            },
+            gestureNavigationEnabled: true,
           ),
+          Positioned(
+            child: StatefulBuilder(
+              builder: (context, _setState) {
+                infomationState = _setState;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("SyncLocalRequestTime：$syncReqestTime", style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.normal)),
+                    Text("SyncLocalResponseTime：$syncResponseTime", style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.normal)),
+                    Text("syncSendResponseTime：$syncSendResponseTime", style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.normal)),
+                    Text(
+                      "local time diff：${(syncResponseTime?.millisecondsSinceEpoch??0) - (syncReqestTime?.millisecondsSinceEpoch??0)}",
+                      style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.normal),
+                    ),
+                    Text("收到的流：$onAudioString", style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.normal)),
+                    Text("发送的流：$emitAudioString", style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.normal)),
+                  ],
+                );
+              },
+            ),
+            bottom: 10,
+            left: 10,
+            right: 10,
+            height: 250,
+          )
         ],
       )),
     );
@@ -138,7 +225,6 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _isRecording = false;
     });
-
   }
 
   Future<void> startRecord() async {
@@ -149,22 +235,14 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> initRecorder() async {
-    int prevTime = DateTime.now().millisecondsSinceEpoch;
     _audioStream = _recorder.audioStream.listen((data) {
       int nowTime = DateTime.now().millisecondsSinceEpoch;
-
-      print("audioStream ${data}");
-      prevTime = nowTime;
-
-      Map audioMsg = {
-        "sts": nowTime,
-        "dts": DelayDetection.ins().getRemoteTime(nowTime),
-        "data": data,
-        "samplerate": "48000"
-      };
-      if(socket != null) {
-        print('>>>>> emit audio ${nowTime - prevTime}ms send ${data.length} >>>>>>');
+      Map audioMsg = {"sts": nowTime, "dts": DelayDetection.ins().getRemoteTime(nowTime), "data": data, "samplerate": "48000"};
+      if (socket != null) {
         socket!.emit('audio', audioMsg);
+        emitAudioString = "len: ${audioMsg['data'].length}，sendTime: ${DateTime.fromMillisecondsSinceEpoch(nowTime)}，"
+            "willTime: ${DateTime.fromMillisecondsSinceEpoch(audioMsg['dts'])}，应延迟：${audioMsg['dts'] - nowTime  - (DelayDetection.ins().localDiffNetwork??0)}ms";
+        infomationState(() {});
       }
     });
 
@@ -185,11 +263,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     });
 
-    await Future.wait([
-      _recorder.initialize(),
-      _player.initialize(),
-      _player.start()
-    ]);
+    await Future.wait([_recorder.initialize(), _player.initialize(), _player.start()]);
   }
 
   void _play() async {
@@ -197,13 +271,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void initSocket() {
-    socket = IO.io('ws://192.168.2.48:3000/',
-        IO.OptionBuilder().enableForceNew().enableAutoConnect().setTransports(['websocket']).setTimeout(5000).build());
+    socket = IO.io('https://audio-ws.openjianghu.org/', IO.OptionBuilder().enableForceNew().enableAutoConnect().setTransports(['websocket']).setTimeout(5000).build());
     socket!.onConnect((_) {
-      Map syncReqest = {'sts': DateTime.now().millisecondsSinceEpoch};
-      socket!.emit('login', { "userName": "flutterClient" });
-      socket!.emit('SyncReqest', syncReqest);
-      setState(() { });
+      setState(() {});
     });
     socket!.onDisconnect((_) => print('disconnect'));
     //
@@ -220,21 +290,21 @@ class _MyHomePageState extends State<MyHomePage> {
     });
 
     socket!.on('SyncResponse', (msg) {
-      DelayDetection.ins().updateTimestamp(msg['sts'], null, DateTime.now().millisecondsSinceEpoch);
+      syncResponseTime = DateTime.now();
+      syncSendResponseTime = DateTime.fromMillisecondsSinceEpoch(msg['sts']);
+      DelayDetection.ins().updateTimestamp(msg['sts'], null, syncResponseTime!.millisecondsSinceEpoch);
+      infomationState(() {});
       print('>>>>> SyncResponse ${msg} >>>>>>');
     });
 
-    int prevTime = DateTime.now().millisecondsSinceEpoch;
     socket!.on('audio', (msg) async {
       int nowTime = DateTime.now().millisecondsSinceEpoch;
       DelayDetection.ins().updateTimestamp(msg['sts'], msg['dts'], nowTime);
-      print('>>>>> on audio ${nowTime - prevTime}ms ${nowTime - msg['dts']} send ${msg['data'].length} >>>>>>');
-      prevTime = nowTime;
       _player.writeChunk(msg['data'] as Uint8List);
-      // print('>>>>> audio ${msg['samplerate']} >>>>>>');
-      // print('>>>>> audio ${msg['data']} >>>>>>');
+      onAudioString = "len: ${msg['data'].length}，sendTime: ${DateTime.fromMillisecondsSinceEpoch(msg['sts'])}，"
+          "nowTime: ${DateTime.fromMillisecondsSinceEpoch(nowTime)}，延迟：${nowTime - msg['sts'] - (DelayDetection.ins().localDiffNetwork??0)}ms";
+      infomationState(() {});
     });
-
   }
 
   void stopSocket() {

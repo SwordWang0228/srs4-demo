@@ -3,6 +3,7 @@ class DelayDetection {
   List<int> delayArray = []; // 近100条的延迟时间记录
   List diffArray = []; // 时间差容器 10条，超过就移出第一条
   int? minDiff; // 最小的时间差
+  int? localDiffNetwork; // 客户端和服务器的时间差
 
   static final DelayDetection _ins = DelayDetection();
 
@@ -14,8 +15,9 @@ class DelayDetection {
   //localTimeStamp：当前时间
   //sts：socket发起的时间
   updateTimestamp(sts, dts, localTimeStamp) {
-    int diff = sts - localTimeStamp; // 对方发起socket和我收到socket的时间差
+    int diff = localTimeStamp - sts; // 对方发起socket和我收到socket的时间差
     diffArray.add(diff);
+    localDiffNetwork ??= diff;
     minDiff ??= diff;
     // 10条，超过就移出第一条
     if (diffArray.length > 10) {
@@ -28,7 +30,7 @@ class DelayDetection {
 
     // 获取最小时间差
     for (var i = 0; i < diffArray.length; i++) {
-      if ((minDiff??0).abs() > diffArray[i].abs()) {
+      if ((minDiff??0) > diffArray[i]) {
         minDiff = diffArray[i];
       }
     }
