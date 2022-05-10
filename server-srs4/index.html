@@ -4,23 +4,36 @@
     <title>SRS</title>
     <meta charset="utf-8">
 </head>
-<body>
-<h3><a href="https://github.com/ossrs/srs">SRS</a> works!</h3>
+<body><!--
+<h3><a href="https://github.com/ossrs/signaling">Signaling</a> works!</h3>
+-->
 <p>
-    Click <a id="en" href="#">here</a> to enter SRS console.<br/>
-    点击进入<a id="cn" href="#">SRS控制台</a>
+    <!--
+    Run demo for <a class="srs_demo" href="one2one.html?autostart=true">WebRTC: One to One over SFU(SRS)</a><br/>
+    -->
+    点击进入<a class="srs_demo" href="one2one.html">SRS一对一通话演示</a>
 </p>
+<!--
 <p>
-    Click <a href="players/?autostart=true">here</a> to start SRS player.<br/>
-    点击进入<a href="players/?autostart=true">SRS播放器</a>
+    Run demo for <a class="srs_demo" href="room.html?autostart=true">WebRTC: Video Room over SFU(SRS)</a><br/>
+    点击进入<a class="srs_demo" href="room.html?autostart=true">SRS多人通话演示</a>
 </p>
-<p><a href="https://github.com/ossrs/srs">SRS Team &copy; 2021</a></p>
-<script type="text/javascript">
-    // http://localhost:8080/console/ng_index.html#/connect?port=1985
-    // http://localhost:8080/console/ng_index.html#/summaries?port=1985
-    var en_url = window.location.protocol + "//" + window.location.host + "/console/en_index.html#/summaries?port=1985";
-    var cn_url = window.location.protocol + "//" + window.location.host + "/console/ng_index.html#/summaries?port=1985";
-    document.getElementById("en").setAttribute('href', en_url);
-    document.getElementById("cn").setAttribute('href', cn_url);
+-->
+<script>
+    let roomName = Number(parseInt(new Date().getTime()*Math.random()*100)).toString(16).substr(0, 7);
+    let elems = document.getElementsByClassName('srs_demo');
+    for (var i = 0; i < elems.length; i++) {
+        let elem = elems.item(i);
+
+        // Use random room.
+        let href = elem.getAttribute('href') + '&room=' + roomName;
+
+        // For run demos on SRS http server.
+        if (window.location.port === '8080') {
+            href += '&wsp=1989';
+        }
+
+       // elem.setAttribute('href', href);
+    }
 </script>
 </body>
