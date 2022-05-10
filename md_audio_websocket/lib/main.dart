@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:md_audio_websocket/DelayDetection.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:webview_flutter/webview_flutter.dart';
+import 'VideoPage.dart';
 import 'sound_stream/sound_stream.dart';
 
 Future<void> main() async {
@@ -91,7 +92,11 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("音频直播"),),
+      appBar: AppBar(title: const Text("音频直播"), actions: [
+        TextButton(onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => VideoPage()));
+        }, child: const Text("视频直播", style: TextStyle(color: Colors.white),))
+      ],),
       body: SafeArea(
           child: Stack(
         children: [

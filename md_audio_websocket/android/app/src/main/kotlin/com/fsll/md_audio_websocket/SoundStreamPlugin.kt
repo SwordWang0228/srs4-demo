@@ -10,9 +10,12 @@ import android.media.AudioRecord.OnRecordPositionUpdateListener
 import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
+import android.os.Build
 import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.annotation.NonNull
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.theeasiestway.opus.Constants
@@ -27,6 +30,7 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry
 import io.flutter.plugin.common.PluginRegistry.Registrar
+import org.fsll.jianghu3.JitterBuffer
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.ShortBuffer
@@ -78,11 +82,13 @@ public class SoundStreamPlugin : FlutterPlugin,
     private var mListener: OnRecordPositionUpdateListener? = null
     private val codec = Opus()
     private var noiseSuppressor: NoiseSuppressor? = null
-    private var automaticGainControl:AutomaticGainControl? = null
-    private var acousticEchoCanceler:AcousticEchoCanceler? = null
+    private var automaticGainControl: AutomaticGainControl? = null
+    private var acousticEchoCanceler: AcousticEchoCanceler? = null
     lateinit var mainHandler: Handler
-        //========= Player's vars
+
+    //========= Player's vars
     private var mAudioTrack: AudioTrack? = null
+    private var jitterBuffer: JitterBuffer? = null
     private var mPlayerSampleRate = 48000 // 16Khz
     private var mPlayerBufferSize = 10240
     private var mPlayerFormat: AudioFormat = AudioFormat.Builder()
@@ -160,6 +166,7 @@ public class SoundStreamPlugin : FlutterPlugin,
         noiseSuppressor?.release()
         automaticGainControl?.release()
         acousticEchoCanceler?.release()
+        mainHandler.removeCallbacks(playWithJitterBuffer)
     }
 
     override fun onDetachedFromActivity() {
@@ -239,6 +246,7 @@ public class SoundStreamPlugin : FlutterPlugin,
     // 初始化播放器
     private fun initializePlayer(@NonNull call: MethodCall, @NonNull result: Result) {
         // mPlayerSampleRate = call.argument<Int>("sampleRate") ?: mPlayerSampleRate
+        mainHandler = Handler(Looper.getMainLooper())
         debugLogging = call.argument<Boolean>("showLogs") ?: false
         mPlayerFormat = AudioFormat.Builder()
             .setEncoding(mRecordFormat)
@@ -258,35 +266,57 @@ public class SoundStreamPlugin : FlutterPlugin,
             .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
             .build()
         mAudioTrack = AudioTrack(audioAttributes, mPlayerFormat, mPlayerBufferSize, AudioTrack.MODE_STREAM, AudioManager.AUDIO_SESSION_ID_GENERATE)
+
         result.success(true)
         sendPlayerStatus(SoundStreamStatus.Initialized)
     }
+
     // 接受buffer播放流
     private fun writeChunk(@NonNull call: MethodCall, @NonNull result: Result) {
         val data = call.argument<ByteArray>("data")
         if (data != null) {
-            pushPlayerChunk(data, result)
+            try {
+                if(jitterBuffer == null) {
+                    jitterBuffer = JitterBuffer(mPlayerSampleRate, mPlayerBufferSize)
+                }
+                val decoded: ByteArray? = codec.decode(data, Constants.FrameSize._960())
+                if (decoded != null) {
+                    println("保存buffer $decoded")
+                    jitterBuffer!!.push(decoded)
+                }
+                result.success(true)
+            } catch (e: Exception) {
+                result.error(SoundStreamErrors.FailedToWriteBuffer.name, "写入失败 Failed to write Player buffer", e.message)
+            }
         } else {
             result.error(SoundStreamErrors.FailedToWriteBuffer.name, "Failed to write Player buffer", "'data' is null")
         }
     }
 
     // 插入播放流buffer
-    private fun pushPlayerChunk(chunk: ByteArray, result: Result) {
+    private fun pushPlayerChunk() {
         try {
-            println("未解码长度::${chunk.size}")
-            val decoded: ByteArray? = codec.decode(chunk, Constants.FrameSize._960())
-            val buffer = ByteBuffer.wrap(decoded)
-            val shortBuffer = ShortBuffer.allocate(decoded!!.size / 2)
-            shortBuffer.put(buffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer())
-            val shortChunk = shortBuffer.array()
-            println("解码长度6::${shortChunk.size}")
-            println("mAudioTrack?.bufferSizeInFrames 1::${mAudioTrack?.bufferSizeInFrames}")
-            mAudioTrack?.write(shortChunk, 0, shortChunk.size)
-            println("mAudioTrack?.bufferSizeInFrames 2::${mAudioTrack?.bufferSizeInFrames}")
-            result.success(true)
+            if (jitterBuffer == null) {
+                return
+            }
+            val getArray: ByteArray? = jitterBuffer!!.pop()
+            val buffer: ByteBuffer? = getArray?.let { ByteBuffer.wrap(it) }
+            if (buffer != null) {
+                val shortBuffer = ShortBuffer.allocate(getArray.size / 2)
+                shortBuffer.put(buffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer())
+                val shortChunk = shortBuffer.array()
+                mAudioTrack?.write(shortChunk, 0, shortChunk.size)
+            }
         } catch (e: Exception) {
-            result.error(SoundStreamErrors.FailedToWriteBuffer.name, "写入失败 Failed to write Player buffer", e.message)
+            println("播放失败 $e")
+        }
+    }
+
+    // 没20毫秒运行一次，读取录音buffer，循环模式入口方法
+    private val playWithJitterBuffer = object : Runnable {
+        override fun run() {
+            pushPlayerChunk()
+            mainHandler.postDelayed(this, 20)
         }
     }
 
@@ -298,6 +328,7 @@ public class SoundStreamPlugin : FlutterPlugin,
             }
 
             mAudioTrack!!.play()
+            mainHandler.post(playWithJitterBuffer)
             sendPlayerStatus(SoundStreamStatus.Playing)
             result.success(true)
         } catch (e: Exception) {
@@ -310,6 +341,9 @@ public class SoundStreamPlugin : FlutterPlugin,
             if (mAudioTrack?.state == AudioTrack.STATE_INITIALIZED) {
                 mAudioTrack?.stop()
             }
+            mainHandler.removeCallbacks(playWithJitterBuffer)
+            jitterBuffer?.clear();
+            jitterBuffer = null
             sendPlayerStatus(SoundStreamStatus.Stopped)
             result.success(true)
         } catch (e: Exception) {
@@ -338,6 +372,9 @@ public class SoundStreamPlugin : FlutterPlugin,
     }
 
     private fun stopRecording(result: Result) {
+        if(mRecorder == null) {
+            return
+        }
         try {
             if (mRecorder!!.recordingState == AudioRecord.RECORDSTATE_STOPPED) {
                 result.success(true)
@@ -358,10 +395,11 @@ public class SoundStreamPlugin : FlutterPlugin,
         sendEventMethod("recorderStatus", status.name)
     }
 
+
     private fun initializeRecorder(@NonNull call: MethodCall, @NonNull result: Result) {
         //  mRecordSampleRate = call.argument<Int>("sampleRate") ?: mRecordSampleRate
         //  循环的方式，打开这个
-        //  mainHandler = Handler(Looper.getMainLooper())
+
         debugLogging = call.argument<Boolean>("showLogs") ?: false
         minBufferSize = AudioRecord.getMinBufferSize(mRecordSampleRate, mInChannels, mRecordFormat)
         mRecorderBufferSize = minBufferSize * 2
@@ -426,25 +464,24 @@ public class SoundStreamPlugin : FlutterPlugin,
         chooseAudioMode(true)
         mRecorder = AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, mRecordSampleRate, mInChannels, mRecordFormat, mRecorderBufferSize)
         // 回声消除
-        if(NoiseSuppressor.isAvailable()) {
+        if (NoiseSuppressor.isAvailable()) {
             noiseSuppressor = NoiseSuppressor.create(mRecorder!!.audioSessionId)
             noiseSuppressor?.enabled = true
         } else {
             println("NoiseSuppressor.isAvailable() ${NoiseSuppressor.isAvailable()}")
         }
         // 自动增益控制
-        if(AutomaticGainControl.isAvailable()) {
+        if (AutomaticGainControl.isAvailable()) {
             automaticGainControl = AutomaticGainControl.create(mRecorder!!.audioSessionId)
             automaticGainControl?.enabled = true
         } else {
             println("AutomaticGainControl.isAvailable() ${AutomaticGainControl.isAvailable()}")
         }
         // 回声消除
-        if(AcousticEchoCanceler.isAvailable()) {
+        if (AcousticEchoCanceler.isAvailable()) {
             acousticEchoCanceler = AcousticEchoCanceler.create(mRecorder!!.audioSessionId)
             acousticEchoCanceler?.enabled = true
-        }
-        else {
+        } else {
             println("AcousticEchoCanceler.isAvailable() ${AcousticEchoCanceler.isAvailable()}")
         }
         if (mRecorder != null) {
@@ -468,15 +505,17 @@ public class SoundStreamPlugin : FlutterPlugin,
 
     // 没20毫秒运行一次，读取录音buffer，循环模式入口方法
     private val getShortArrayMethod = object : Runnable {
+        @RequiresApi(Build.VERSION_CODES.M)
         override fun run() {
             onPeriodicNotificationMethod(mRecorder!!)
             // mainHandler.postDelayed(this, 20)
         }
     }
+
     // 没20毫秒运行一次，读取录音buffer
+    @RequiresApi(Build.VERSION_CODES.M)
     fun onPeriodicNotificationMethod(recorder: AudioRecord) {
         var nowTime = Date().time
-        println("每次取值间隔 ${nowTime - prevTimestamp}ms")
         // 8000采样率，每20ms 160采集点，获取的数据不超过320，实际是244
         // codec 编码是每20ms的数据进行编码
         prevTimestamp = nowTime
@@ -487,40 +526,25 @@ public class SoundStreamPlugin : FlutterPlugin,
         if (shortOut <= 0) {
             return
         }
-        println("每次取的量:$shortOut")
         val readData: ShortArray = data.copyOfRange(0, shortOut)
         // 插入队列
-        audioDataQueue = if(audioDataQueue == null) {
+        audioDataQueue = if (audioDataQueue == null) {
             readData
         } else {
-            val temp: ShortArray = ShortArray(audioDataQueue!!.size + shortOut)
-            audioDataQueue!!.copyInto(temp, 0, 0, audioDataQueue!!.size - 1)
-            readData.copyInto(temp, audioDataQueue!!.size, 0, shortOut - 1)
-            temp
+            audioDataQueue!!.plus(readData)
         }
         // 取出队列160个并发送到flutter
         // 把采集的数据进行队列处理，每超过160就进行一次推流，不够等凑齐，超过就while循环推送
         while (audioDataQueue != null && audioDataQueue!!.size >= 960) {
             val willSend: ShortArray = audioDataQueue!!.sliceArray(0..959)
             // 编码并发送
-            println("未编码长度::${audioDataQueue!!.size} ${willSend.size}")
             val encoded: ShortArray? = codec.encode(willSend, Constants.FrameSize._960())
-            println("已编码长度::${encoded!!.size}")
-            val byteBuffer = ByteBuffer.allocate(encoded.size * 2)
+            val byteBuffer = ByteBuffer.allocate(encoded!!.size * 2)
             byteBuffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(encoded)
             sendEventMethod("dataPeriod", byteBuffer.array())
 
-            // val decoded: ByteArray? = codec.decode(byteBuffer.array(), Constants.FrameSize._960())
-            // val buffer = ByteBuffer.wrap(decoded)
-            // val shortBuffer = ShortBuffer.allocate(decoded!!.size / 2)
-            // shortBuffer.put(buffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer())
-            // val shortChunk = shortBuffer.array()
-            // mAudioTrack?.write(shortChunk, 0, shortChunk.size)
-
-            audioDataQueue = if(audioDataQueue!!.size > 960) {
-                val temp = ShortArray(audioDataQueue!!.size - 960)
-                audioDataQueue!!.copyInto(temp, 0, 960, audioDataQueue!!.size - 1)
-                temp
+            audioDataQueue = if (audioDataQueue!!.size > 960) {
+                audioDataQueue!!.copyOfRange(960, audioDataQueue!!.size - 1)
             } else {
                 null
             }
@@ -530,9 +554,10 @@ public class SoundStreamPlugin : FlutterPlugin,
     private fun createRecordListener(): OnRecordPositionUpdateListener? {
         return object : OnRecordPositionUpdateListener {
             override fun onMarkerReached(recorder: AudioRecord) {
-            // recorder.read(audioData!!, 0, minBufferSize, AudioRecord.READ_NON_BLOCKING)
+                // recorder.read(audioData!!, 0, minBufferSize, AudioRecord.READ_NON_BLOCKING)
             }
 
+            @RequiresApi(Build.VERSION_CODES.M)
             override fun onPeriodicNotification(recorder: AudioRecord) {
                 onPeriodicNotificationMethod(recorder)
             }
