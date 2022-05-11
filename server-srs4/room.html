@@ -171,7 +171,7 @@
       $('.srs_players').append(ui);
 
       // Start play for this user.
-      var url = 'webrtc://' + host + '/' + room + '/' + display + conf.query;
+      var url = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
       video.show();
       ui.show();
 
