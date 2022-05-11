@@ -131,7 +131,7 @@
         $(e).text(display);
       });
 
-      var url = 'webrtc://' + host + '/' + room + '/' + display + conf.query;
+      var url = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
       $('#rtc_media_publisher').show();
       $('#publisher').show();
 
