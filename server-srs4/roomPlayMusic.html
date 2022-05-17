@@ -79,7 +79,10 @@
   </div>
 
   <div id="musicBoxList">
-    <li></li>
+    <li>Jackson F. Smith - Cantina Rag.mp3</li>
+    <li>Ken Hamm - Buckbreak.mp3</li>
+    <li>The Trumpeteers - Little Wooden Church.mp3</li>
+    <li>Voodoo Suite - Little Grass Shack.mp3</li>
   </div>
 </div>
 <script type="text/javascript">
@@ -194,10 +197,10 @@
     // 开始播放音乐
     var startPlayAudio = function ({ audioUrl }) {
       if(!audioContext) {
-        audioContext = new Audio(audioUrl);
+        audioContext = new Audio(location.origin + '/server-srs4/audio/' + audioUrl);
       } else {
         audioContext.pause();
-        audioContext.src = audioUrl;
+        audioContext.src = location.origin + '/server-srs4/audio/' + audioUrl;
       }
     }
 
