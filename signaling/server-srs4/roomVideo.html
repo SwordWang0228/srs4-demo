@@ -28,6 +28,7 @@
           <li><a href="one2oneVideo.html">一对一音视频</a></li>
           <li><a href="roomAudio.html">多人音频</a></li>
           <li class="active"><a href="roomVideo.html">多人视频</a></li>
+          <li><a href="roomPlayMusic.html">多人音频+音乐</a></li>
           <li class="srs_ignore">
             <a href="https://github.com/ossrs/signaling">
               <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/ossrs/signaling?style=social">
@@ -47,7 +48,7 @@
     Display:
     <input type="text" id="txt_display" class="input-small" value="">
     <button class="btn btn-primary" id="btn_start">加入房间</button>
-    
+
     <button class="btn btn-primary" id="btn_publish_video">开始推音视频流</button>
   </div>
 
@@ -73,7 +74,7 @@
   var publisher = null;
   var is_audio_push = false;
   var is_video_push = false;
- 
+
   var players = {}; // Key is display, value is a player object.
   $(function(){
     console.log('?wss=x to specify the websocket schema, ws or wss');
@@ -113,12 +114,12 @@
 
             if (!stillAlive) {
                 if (obj.video_player) {
-                    obj.video_player.close();      
+                    obj.video_player.close();
                 }
                 if (obj.audio_player) {
-                    obj.audio_player.close();      
+                    obj.audio_player.close();
                 }
-              
+
               obj.ui.remove();
             }
           });
@@ -140,25 +141,25 @@
         startPlay(host, room, participant.display, participant);
       }
     };
-    
+
     var startPublish = function (host, room, display) {
-     
+
       $(".ff_first").each(function(i,e) {
         $(e).text(display);
       });
 
       var url = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
-      
+
       $('#rtc_media_publisher').show();
       $('#publisher').show();
 
       if (publisher) {
-          
+
         publisher.close()
       }
-      publisher = new SrsRtcPublisherAsync();  
-      
-      $('#rtc_media_publisher').prop('srcObject', publisher.stream);    
+      publisher = new SrsRtcPublisherAsync();
+
+      $('#rtc_media_publisher').prop('srcObject', publisher.stream);
     //   const {publishVideo, publishAudio} = checkPublisherStatus()
         // console.log('publishVideo, publishAudio---', publishVideo, publishAudio)
       return publisher.publish(url, is_video_push, is_audio_push).then(function(session){
@@ -168,10 +169,10 @@
         //   console.log('getAudioTracks---', publisher.stream.getAudioTracks())
       }).catch(function (reason) {
         publisher.close();
-        
+
         $('#rtc_media_publisher').hide();
-        
-    
+
+
         console.log(reason.message);
       });
     };
@@ -184,7 +185,7 @@
       if (players[display]) {
         players[display].ui.remove();
         if (players[display].player) {
-            players[display].player.close();    
+            players[display].player.close();
         }
       }
 
@@ -196,15 +197,15 @@
 
       players[display] = {ui:ui, video:video, player};
       $('.srs_players').append(ui);
-    
-      const url = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || ''); 
+
+      const url = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
       // Start play for this user.
-      
+
       video.show();
       ui.show();
 
       video.prop('srcObject', player.stream);
-    
+
       player.play(url).then(function(session){
         ui.children('#video').text('video: ' + url);
         video.prop('muted', false);
@@ -233,8 +234,8 @@
       is_video_push = true
       is_audio_push = true
       await startPublish(host, room, display);
-      
-      console.log('startPublish video done') 
+
+      console.log('startPublish video done')
       let r1 = await sig.send({action:'publish', room:room, display:display, video: is_video_push, audio: is_audio_push});
       console.log('Signaling: video publish ok', r1);
     }
@@ -245,8 +246,8 @@
         // Start publish media if signaling is ok.
       is_audio_push = true
       await startPublish(host, room, display)
-      
-      console.log('startPublish audio done') 
+
+      console.log('startPublish audio done')
       let r1 = await sig.send({action:'publish', room:room, display:display, video: is_video_push, audio: is_audio_push});
       console.log('Signaling: audio publish ok', r1);
     }
