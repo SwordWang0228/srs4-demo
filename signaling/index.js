@@ -1,6 +1,8 @@
 const { WebSocketServer } = require('ws');
 
-const wss = new WebSocketServer({ port: 1990 });
+const port = 1990;
+const wss = new WebSocketServer({ port });
+console.log("信令服务启动, port:", port);
 
 let room_obj = {}
 let socket_lient_obj = {}
