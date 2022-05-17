@@ -17,3 +17,11 @@ npm i
 npm run restart
 ```
 **打开浏览器访问**
+
+## httpServer 简介
+
+> eggjs 不实用 egg-jianghu
+- html            
+- httpApiProxy    
+- httpCallback    
+- signaling
