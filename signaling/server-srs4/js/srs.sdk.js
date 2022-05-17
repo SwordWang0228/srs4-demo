@@ -81,11 +81,6 @@
      //      webrtc://r.ossrs.net/live/livestream?token=xxx
      self.publish = async function (url, video, audio) {
          var conf = self.__internal.prepareUrl(url);
-         const { vhost } = conf.urlObject;
-         conf.api = `https://${vhost}/rtc/v1/publish/`;
-         conf.apiUrl = conf.api;
-         // INSERT INTO `jianghu_v3`.`user_group_session` (`id`, `groupId`, `userId`, `attendStatus`, `stageStatus`, `micStatus`, `joinTime`, `srsToken`, `operation`, `operationByUserId`, `operationByUser`, `operationAt`) VALUES (1371, 'test01', 'admin01', 'present', 'onStage', 'muted', '2022-05-13T23:07:56+08:00', 'test01_admin01_vO6hwRIb4XU1', 'insert', NULL, NULL, '2022-05-13T23:07:56+08:00');
-         conf.streamUrl = `${conf.streamUrl}?srsToken=test01_admin01_vO6hwRIb4XU1`
          self.pc.addTransceiver("audio", {direction: "sendonly"});    
          self.pc.addTransceiver("video", {direction: "sendonly"});
          
@@ -346,10 +341,6 @@
      //      webrtc://r.ossrs.net/live/livestream?token=xxx
      self.play = async function(url, video, audio) {
          var conf = self.__internal.prepareUrl(url);
-         const { vhost } = conf.urlObject;
-         conf.api = `https://${vhost}/rtc/v1/play/`;
-         conf.apiUrl = conf.api;
-         conf.streamUrl = `${conf.streamUrl}?srsToken=333333`
          self.pc.addTransceiver("audio", {direction: "recvonly"});    
          self.pc.addTransceiver("video", {direction: "recvonly"});    
          

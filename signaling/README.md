@@ -8,4 +8,4 @@
 ## srs信令服务, Node实现
 
 - 信令服务: websocket 1990
-- srs 测试页面: 开启vscode golive; 然后打开 http://127.0.0.1:5500/srs4-demo/signaling/server-srs4/room.html?autostart=true&room=colin&host=${srs服务}&wsh=127.0.0.1&wss=ws&wsp=1990
+- srs 测试页面: 开启vscode golive; 然后打开 http://127.0.0.1:5500/srs4-demo/signaling/server-srs4/room.html?autostart=true&room=colin&host=${ipv4}&wsh=ipv4&wss=ws&wsp=1990
