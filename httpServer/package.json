@@ -25,7 +25,7 @@
     "node": ">=10.0.0"
   },
   "scripts": {
-    "start": "egg-scripts start --daemon --port=7015 --title=srs4-demo-httpServer",
+    "start": "egg-scripts start --daemon --port=7015 --workers=1 --title=srs4-demo-httpServer",
     "stop": "egg-scripts stop --title=srs4-demo-httpServer",
     "dev": "egg-bin dev --port=7015",
     "restart": "npm run stop && npm run start",
