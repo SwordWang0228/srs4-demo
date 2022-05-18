@@ -16,7 +16,7 @@ class HomeController extends Controller {
     // 成功: srs客户端可以继续 操作
     this.ctx.body = 0;
     // 失败: 中断srs客户端操作
-    this.ctx.body = 1;
+    // this.ctx.body = 1;
   }
 
   async srsHttpApiProxy() {
