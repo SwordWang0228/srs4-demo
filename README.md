@@ -13,6 +13,7 @@
    # 修改配置${ipv4} 为docker 宿主机的内网地址
    ```   
 1. 使用docker启动srs4: `docker run -d --name srs4-demo-srs -v=/${项目目录}/srs4-demo/srsConf/srs.conf:/usr/local/srs/conf/srs.conf -p 11935:1935 -p 11985:1985 -p 18080:8080 --env CANDIDATE="${ipv4 或者 ipv6}" -p 18000:8000/udp ossrs/srs:v4.0-b10 ./objs/srs -c conf/srs.conf`
+> 注意: 修改srsConf/srs.conf后需要手动 重启 srs4-demo-srs ===》`docker restart srs4-demo-srs`
 
 ## 启动httpServer
 
