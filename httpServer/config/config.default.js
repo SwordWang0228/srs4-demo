@@ -4,7 +4,7 @@ const path = require("path");
 
 module.exports = appInfo => {
   return {
-    srsHttpApi: "http://127.0.0.1:1985",
+    srsHttpApi: "http://127.0.0.1:11985",
     middleware: [],
     cors: {
       origin: "*",
