@@ -125,20 +125,34 @@
              };
              console.log("Generated offer: ", data);
  
-             $.ajax({
-                 type: "POST", url: conf.apiUrl, data: JSON.stringify(data),
-                 contentType: 'application/json', dataType: 'json',
-             }).done(function (data) {
-                 console.log("Got answer: ", data);
-                 if (data.code) {
-                     reject(data);
-                     return;
-                 }
- 
-                 resolve(data);
-             }).fail(function (reason) {
-                 reject(reason);
-             });
+             // Tip: 使用/srs/httpCallback转发 请求到 srs http_api
+            //  $.ajax({
+            //      type: "POST", url: "/srs/httpCallback", data: { url: conf.apiUrl, param: data } ,
+            //      contentType: 'application/json', dataType: 'json',
+            //  }).done(function (data) {
+            //      console.log("Got answer: ", data);
+            //      if (data.code) {
+            //          reject(data);
+            //          return;
+            //      }
+            //      resolve(data);
+            //  }).fail(function (reason) {
+            //      reject(reason);
+            //  });
+
+            $.ajax({
+                type: "POST", url: conf.apiUrl, data: JSON.stringify(data),
+                contentType: 'application/json', dataType: 'json',
+            }).done(function (data) {
+                console.log("Got answer: ", data);
+                if (data.code) {
+                    reject(data);
+                    return;
+                }
+                resolve(data);
+            }).fail(function (reason) {
+                reject(reason);
+            });             
          });
          await self.pc.setRemoteDescription(
              new RTCSessionDescription({type: 'answer', sdp: session.sdp})
@@ -353,20 +367,35 @@
                  clientip: null, sdp: offer.sdp
              };
              console.log("Generated offer: ", data);
- 
-             $.ajax({
-                 type: "POST", url: conf.apiUrl, data: JSON.stringify(data),
-                 contentType:'application/json', dataType: 'json'
-             }).done(function(data) {
-                 console.log("Got answer: ", data);
-                 if (data.code) {
-                     reject(data); return;
-                 }
- 
-                 resolve(data);
-             }).fail(function(reason){
-                 reject(reason);
-             });
+
+            // Tip: 使用/srs/httpCallback转发 请求到 srs http_api
+            // $.ajax({
+            //     type: "POST", url: "/srs/httpCallback", data: { url: conf.apiUrl, param: data } ,
+            //     contentType:'application/json', dataType: 'json'
+            // }).done(function(data) {
+            //     console.log("Got answer: ", data);
+            //     if (data.code) {
+            //         reject(data); return;
+            //     }
+
+            //     resolve(data);
+            // }).fail(function(reason){
+            //     reject(reason);
+            // });       
+
+            $.ajax({
+                type: "POST", url: conf.apiUrl, data: JSON.stringify(data),
+                contentType:'application/json', dataType: 'json'
+            }).done(function(data) {
+                console.log("Got answer: ", data);
+                if (data.code) {
+                    reject(data); return;
+                }
+
+                resolve(data);
+            }).fail(function(reason){
+                reject(reason);
+            });
          });
          await self.pc.setRemoteDescription(
              new RTCSessionDescription({type: 'answer', sdp: session.sdp})

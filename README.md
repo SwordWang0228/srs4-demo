@@ -19,7 +19,7 @@ npm run restart
 **打开浏览器访问**: http://127.0.0.1:7015/public/one2oneAudio.html?autostart=true&room=colin&host=192.168.31.91:1985&wsh=192.168.31.91&wss=ws&wsp=1990
 > 注意: 
 >  - chrome浏览器下网页`推流&拉流`需要使用https(127.0.0.1页面除外)
->  - host: 必须使用ipv4 或者 ipv6, 否则无法推流-拉流
+>  - host: 必须使用ipv4 或者 ipv6, 否则无法推流
 
 
 
