@@ -28,6 +28,7 @@
     "start": "egg-scripts start --daemon --port=7015 --title=srs4-demo-httpServer",
     "stop": "egg-scripts stop --title=srs4-demo-httpServer",
     "dev": "egg-bin dev --port=7015",
+    "restart": "npm run stop && npm run start",
     "debug": "egg-bin debug",
     "test": "npm run lint -- --fix && npm run test-local",
     "test-local": "egg-bin test",

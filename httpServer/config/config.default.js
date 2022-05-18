@@ -2,8 +2,7 @@
 
 module.exports = appInfo => {
   return {
-    srsHttpApi: "http://127.0.0.1:1985", 
-    keys: appInfo.name + '_1652796711760_7833',
+    srsHttpApi: "http://127.0.0.1:1985",
     middleware: [],
     cors: {
       origin: "*",
