@@ -17,5 +17,13 @@ module.exports = appInfo => {
       preload: false,
       maxFiles: 0,
     },
+    logger: {
+      outputJSON: true,
+      level: "INFO",
+      dir: path.join(appInfo.baseDir, "logs"),
+      contextFormatter(meta) {
+        return `[${meta.date}] [${meta.level}] [${meta.ctx.method} ${meta.ctx.url}] ${meta.message}`;
+      },
+    },
   };
 };
