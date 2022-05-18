@@ -15,18 +15,17 @@
 cd srs4-demo/httpServer
 npm i
 npm run restart
+# Demo页面: http://127.0.0.1:7015
+# 信令服务: ws://127.0.0.1:1990/sig/v1/rtc
 ```
+
+## 本地开发
+
 **打开浏览器访问**: http://127.0.0.1:7015/public/one2oneAudio.html?autostart=true&room=colin&host=192.168.31.91:1985&wsh=192.168.31.91&wss=ws&wsp=1990
 > 注意: 
 >  - chrome浏览器下网页`推流&拉流`需要使用https(127.0.0.1页面除外)
 >  - host: 必须使用ipv4 或者 ipv6, 否则无法推流
+>  - wsh=192.168.31.91&wss=ws&wsp=1990 ===> ws://127.0.0.1:1990/sig/v1/rtc
 
+## 开源江湖Demo
 
-
-## httpServer 简介
-
-> eggjs 不实用 egg-jianghu
-- html            
-- httpApiProxy    
-- httpCallback    
-- signaling

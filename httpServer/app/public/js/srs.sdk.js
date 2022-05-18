@@ -125,34 +125,34 @@
              };
              console.log("Generated offer: ", data);
  
-             // Tip: 使用/srs/httpCallback转发 请求到 srs http_api
-            //  $.ajax({
-            //      type: "POST", url: "/srs/httpCallback", data: { url: conf.apiUrl, param: data } ,
-            //      contentType: 'application/json', dataType: 'json',
-            //  }).done(function (data) {
-            //      console.log("Got answer: ", data);
-            //      if (data.code) {
-            //          reject(data);
-            //          return;
-            //      }
-            //      resolve(data);
-            //  }).fail(function (reason) {
-            //      reject(reason);
-            //  });
+            // Tip: 使用/srs/httpApiProxy 转发 请求到 srs http_api
+            axios.post('/srs/httpApiProxy', { url: conf.apiUrl, param: data })
+                .then(function (response) {
+                    console.log("Got answer: ", response.data);
+                    if (!response.data || response.data.code) {
+                        reject(response.data);
+                        return;
+                    }
+                    resolve(response.data);
+                })
+                .catch(function (error) {
+                    console.log("/srs/httpApiProxy 请求异常", error);
+                    reject(error);
+                });  
 
-            $.ajax({
-                type: "POST", url: conf.apiUrl, data: JSON.stringify(data),
-                contentType: 'application/json', dataType: 'json',
-            }).done(function (data) {
-                console.log("Got answer: ", data);
-                if (data.code) {
-                    reject(data);
-                    return;
-                }
-                resolve(data);
-            }).fail(function (reason) {
-                reject(reason);
-            });             
+            // $.ajax({
+            //     type: "POST", url: conf.apiUrl, data: JSON.stringify(data),
+            //     contentType: 'application/json', dataType: 'json',
+            // }).done(function (data) {
+            //     console.log("Got answer: ", data);
+            //     if (data.code) {
+            //         reject(data);
+            //         return;
+            //     }
+            //     resolve(data);
+            // }).fail(function (reason) {
+            //     reject(reason);
+            // });             
          });
          await self.pc.setRemoteDescription(
              new RTCSessionDescription({type: 'answer', sdp: session.sdp})
@@ -202,7 +202,6 @@
                      apiUrl += '&' + key + '=' + urlObject.user_query[key];
                  }
              }
-             // Replace /rtc/v1/play/&k=v to /rtc/v1/play/?k=v
              var apiUrl = apiUrl.replace(api + '&', api + '?');
  
              var streamUrl = urlObject.url;
@@ -368,9 +367,22 @@
              };
              console.log("Generated offer: ", data);
 
-            // Tip: 使用/srs/httpCallback转发 请求到 srs http_api
+            // Tip: 使用/srs/httpApiProxy 转发 请求到 srs http_api
+            axios.post('/srs/httpApiProxy', { url: conf.apiUrl, param: data })
+                .then(function (response) {
+                    console.log("Got answer: ", response.data);
+                    if (!response.data || response.data.code) {
+                        reject(response.data);
+                        return;
+                    }
+                    resolve(response.data);
+                })
+                .catch(function (error) {
+                    console.log("/srs/httpApiProxy 请求异常", error);
+                    reject(error);
+                });  
             // $.ajax({
-            //     type: "POST", url: "/srs/httpCallback", data: { url: conf.apiUrl, param: data } ,
+            //     type: "POST", url: conf.apiUrl, data: JSON.stringify(data),
             //     contentType:'application/json', dataType: 'json'
             // }).done(function(data) {
             //     console.log("Got answer: ", data);
@@ -381,21 +393,7 @@
             //     resolve(data);
             // }).fail(function(reason){
             //     reject(reason);
-            // });       
-
-            $.ajax({
-                type: "POST", url: conf.apiUrl, data: JSON.stringify(data),
-                contentType:'application/json', dataType: 'json'
-            }).done(function(data) {
-                console.log("Got answer: ", data);
-                if (data.code) {
-                    reject(data); return;
-                }
-
-                resolve(data);
-            }).fail(function(reason){
-                reject(reason);
-            });
+            // });
          });
          await self.pc.setRemoteDescription(
              new RTCSessionDescription({type: 'answer', sdp: session.sdp})

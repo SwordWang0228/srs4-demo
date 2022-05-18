@@ -86,7 +86,7 @@ async function signalingInit() {
       console.log('disconnected display', ws.display);
     });
   });
-  console.log("信令服务启动, port:", port);
+  console.log("信令服务启动(WebSocketServer), port:", port, "url:", "/sig/v1/rtc");
 }
 
 async function notify(room, peer, event, param, data) {
