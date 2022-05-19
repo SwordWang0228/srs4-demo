@@ -25,13 +25,15 @@ npm run restart
 # 信令服务: ws://127.0.0.1:1990/sig/v1/rtc
 ```
 
-## 本地调试
+## 本地调试（使用本地的 srs）
 
-**打开浏览器访问**: http://127.0.0.1:7015/public/one2oneAudio.html?autostart=true&room=testRoom&host=192.168.31.91:11985&wsh=192.168.31.91&wss=ws&wsp=11990
+**打开浏览器访问**: http://127.0.0.1:7015/public/one2oneAudio.html?autostart=true&room=testRoom&host=192.168.31.91:11985&wsp=11990
 > 注意: 
 >  - chrome浏览器下网页`推流&拉流`需要使用https(127.0.0.1页面除外)
 >  - host: 必须使用ipv4 或者 ipv6, 否则无法推流
->  - wsh=192.168.31.91&wss=ws&wsp=11990 ===> ws://127.0.0.1:11990/sig/v1/rtc
+
+## 本地调试（使用开源江湖的 srs）
+
 
 ## 开源江湖 环境调试
 
