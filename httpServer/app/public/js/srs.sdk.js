@@ -81,6 +81,7 @@
      //      webrtc://r.ossrs.net/live/livestream?token=xxx
      self.publish = async function (url, video, audio) {
          var conf = self.__internal.prepareUrl(url);
+         debugger
          self.pc.addTransceiver("audio", {direction: "sendonly"});    
          self.pc.addTransceiver("video", {direction: "sendonly"});
          
