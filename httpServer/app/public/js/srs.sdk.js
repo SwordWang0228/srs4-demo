@@ -23,7 +23,7 @@
  */
 
  'use strict';
-
+ 
  // Depends on adapter-7.4.0.min.js from https://github.com/webrtc/adapter
  // Async-awat-prmise based SRS RTC Publisher.
  function SrsRtcPublisherAsync(isHd) {
@@ -126,7 +126,8 @@
              console.log("Generated offer: ", data);
  
             // Tip: 使用/srs/httpApiProxy 转发 请求到 srs http_api
-            axios.post('/srs/httpApiProxy', { url: conf.apiUrl, param: data })
+            const requestUrl = conf.urlObject.vhost === "srs4.openjianghu.org" ? `https://srs4.openjianghu.org/srs/httpApiProxy` : '/srs/httpApiProxy';
+            axios.post(requestUrl, { url: conf.apiUrl, param: data })
                 .then(function (response) {
                     console.log("Got answer: ", response.data);
                     if (!response.data || response.data.code) {
@@ -368,7 +369,8 @@
              console.log("Generated offer: ", data);
 
             // Tip: 使用/srs/httpApiProxy 转发 请求到 srs http_api
-            axios.post('/srs/httpApiProxy', { url: conf.apiUrl, param: data })
+            const requestUrl = conf.urlObject.vhost === "srs4.openjianghu.org" ? `https://srs4.openjianghu.org/srs/httpApiProxy` : '/srs/httpApiProxy';
+            axios.post(requestUrl, { url: conf.apiUrl, param: data })
                 .then(function (response) {
                     console.log("Got answer: ", response.data);
                     if (!response.data || response.data.code) {
