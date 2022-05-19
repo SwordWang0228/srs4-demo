@@ -22,7 +22,7 @@
 ```bash
 cd srs4-demo/httpServer
 npm i
-npm run restart
+npm run dev
 # Demo页面: http://127.0.0.1:7015
 # 信令服务: ws://127.0.0.1:1990/sig/v1/rtc
 ```
@@ -38,6 +38,6 @@ npm run restart
 ## 本地调试（使用开源江湖的 srs）
 **打开浏览器访问**: http://127.0.0.1:7015/public/one2oneAudio.html?autostart=true&host=srs4.openjianghu.org
 > 备注: 
->  - srs4.openjianghu.org ===》 https://srs4.openjianghu.org/srs/httpApiProxy ====> webrtc://47.243.6.203:18000
+>  - srs4.openjianghu.org ===》 https://srs4.openjianghu.org/srs/httpApiProxy ====> webrtc://47.243.6.203:18000/live/2ae7abd
 
 
