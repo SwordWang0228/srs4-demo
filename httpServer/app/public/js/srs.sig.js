@@ -32,6 +32,10 @@ function SrsRtcSignalingAsync() {
     // of user to join the room.
     self.connect = async function (schema, host, room, display) {
         var url = schema + '://' + host + '/sig/v1/rtc';
+        // 针对127.0.0.1 特殊配制
+        if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
+            url = schema + '://' + window.location.hostname + ':11990' + '/sig/v1/rtc';
+        }
         self.ws = new WebSocket(url + '?room=' + room + '&display=' + display);
 
         self.ws.onmessage = function(event) {

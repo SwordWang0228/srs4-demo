@@ -29,7 +29,7 @@ npm run restart
 
 ## 本地调试（使用本地的 srs）
 
-**打开浏览器访问**: http://127.0.0.1:7015/public/one2oneAudio.html?autostart=true&room=testRoom&host=192.168.31.91:11985&wsp=11990
+**打开浏览器访问**: http://127.0.0.1:7015/public/one2oneAudio.html?host=192.168.31.91
 > 注意: 
 >  - chrome浏览器下网页`推流&拉流`需要使用https(127.0.0.1页面除外)
 >  - host: 必须使用ipv4 或者 ipv6, 否则无法推流
