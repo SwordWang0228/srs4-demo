@@ -308,9 +308,11 @@
       $(musicBoxList).show();
     }
     $(musicBoxList).children('li').on('click', (event) => {
-      var audioUrl = $(event.target).text();
+      var filename = $(event.target).text();
+      const audioUrl = location.origin + '/public/audio/' + filename
       sig.send({action:'audioPlay', room: conf.room, display: conf.display, audioUrl})
-      startPlayAudio(audioUrl);
+      // TODO: socket 消息触发播放
+      // startPlayAudio(audioUrl);
     })
 
     $("#btn_start_music").click(selectMusic)
@@ -340,12 +342,12 @@
     }
 
     // 开始播放音乐
-    function startPlayAudio({ audioUrl }) {
+    function startPlayAudio(audioUrl) {
       if(!audioContext) {
-        audioContext = new Audio(location.origin + '/server-srs4/audio/' + audioUrl);
+        audioContext = new Audio(audioUrl);
       } else {
         audioContext.pause();
-        audioContext.src = location.origin + '/server-srs4/audio/' + audioUrl;
+        audioContext.src = audioUrl;
       }
     }
 
