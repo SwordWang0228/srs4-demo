@@ -95,18 +95,21 @@ function SrsRtcSignalingAsync() {
 function SrsRtcSignalingParse(location) {
     let query = location.href.split('?')[1];
     query = query? '?' + query : null;
+    
+    // const defaultSrsHost = location.hostname;
+    const defaultSrsHost = "srs4.openjianghu.org";
 
     let wsSchema = location.href.split('wss=')[1];
     wsSchema = wsSchema? wsSchema.split('&')[0] : (location.protocol === 'http:'? 'ws' : 'wss');
 
     let wsHost = location.href.split('wsh=')[1];
-    wsHost = wsHost? wsHost.split('&')[0] : location.hostname;
+    wsHost = wsHost? wsHost.split('&')[0] : defaultSrsHost;
 
     let wsPort = location.href.split('wsp=')[1];
     wsPort = wsPort? wsPort.split('&')[0] : location.host.split(':')[1];
 
     let host = location.href.split('host=')[1];
-    host = host? host.split('&')[0] : location.hostname;
+    host = host? host.split('&')[0] : defaultSrsHost;
 
     let room = location.href.split('room=')[1];
     room = room? room.split('&')[0] : null;

@@ -42,15 +42,9 @@
 </div>
 <div class="container">
   <div class="form-inline">
-    SRS:
-    <input type="text" id="txt_host" class="input-medium" value="">
-    Room:
-    <input type="text" id="txt_room" class="input-small" value="live">
-    Display:
-    <input type="text" id="txt_display" class="input-small" value="">
-    <button class="btn btn-primary" id="btn_start">加入房间</button>
-    <!--<button class="btn btn-primary" id="btn_publish_audio">开始推音频流</button>-->
-    <button class="btn btn-primary" id="btn_publish_video">开始推音视频流</button>
+    URL:
+    <input type="text" id="txt_url" class="input-xxlarge" value="">
+    <button class="btn btn-primary" id="btn_publish_video">开始推流</button>
   </div>
 
   <div class="row srs_players">
@@ -61,45 +55,16 @@
       <label></label>
       <span id='self'></span>
     </div>
-    <div class="span4 hide" id="player">
-      <label></label>
-      <video id="rtc_media_video_player" width="310" autoplay muted controls></video>
-      <label></label>
-      <span id='video'></span>
-      <span id='audio'></span>
-    </div>
   </div>
 </div>
 <script type="text/javascript">
-  var sig = null;
   var publisher = null;
   var is_audio_push = false;
   var is_video_push = false;
-  var current_audio_publishing = false;
-  var current_video_publishing = false;
-  var players = {}; // Key is display, value is a player object.
   $(function(){
-    console.log('?wss=x to specify the websocket schema, ws or wss');
-    console.log('?wsh=x to specify the websocket server ip');
-    console.log('?wsp=x to specify the websocket server port');
-    console.log('?host=x to specify the SRS server');
-    console.log('?room=x to specify the room to join');
-    console.log('?display=x to specify your nick name');
+    var startPublish = function () {
 
-    var startDemo = async function () {
-      var host = $('#txt_host').val();
-      var room = $('#txt_room').val();
-      var display = $('#txt_display').val();
-    };
-
-    var startPublish = function (host, room, display) {
-
-      $(".ff_first").each(function(i,e) {
-        $(e).text(display);
-      });
-
-      var url = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
-
+      var url = $('#txt_url').val();
       $('#rtc_media_publisher').show();
       $('#publisher').show();
 
@@ -110,85 +75,23 @@
       publisher = new SrsRtcPublisherAsync();
 
       $('#rtc_media_publisher').prop('srcObject', publisher.stream);
-    //   const {publishVideo, publishAudio} = checkPublisherStatus()
-        // console.log('publishVideo, publishAudio---', publishVideo, publishAudio)
       return publisher.publish(url, is_video_push, is_audio_push).then(function(session){
           $('#self').text('Self: ' + url);
-        //   console.log('getSenders---', publisher.pc.getSenders())
-        //   console.log('getVideoTracks---', publisher.stream.getVideoTracks())
-        //   console.log('getAudioTracks---', publisher.stream.getAudioTracks())
       }).catch(function (reason) {
         publisher.close();
-
         $('#rtc_media_publisher').hide();
-
-
         console.log(reason.message);
       });
     };
     
-    var startPlay = function (host, room, display, peer) {
-      $(".ff_second").each(function(i,e) {
-        $(e).text(display);
-      });
-
-      // Remove exists.
-      if (players[display]) {
-        players[display].ui.remove();
-        if (players[display].player) {
-            players[display].player.close();
-        }
-      }
-
-      // Clone a player from template.
-      let ui = $('#player').clone().attr('id', 'player-' + display);
-      let video = ui.children('#rtc_media_video_player')
-      video.hide()
-      let player = new SrsRtcPlayerAsync();
-
-      players[display] = {ui:ui, video:video, player};
-      $('.srs_players').append(ui);
-
-      const url = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
-      // Start play for this user.
-
-      video.show();
-      ui.show();
-
-      video.prop('srcObject', player.stream);
-
-      player.play(url).then(function(session){
-        ui.children('#video').text('video: ' + url);
-        video.prop('muted', false);
-      }).catch(function (reason) {
-        player.close();
-        video.hide();
-        console.log(reason);
-      });
-    };
-
-    // Pass-by to SRS url.
     let conf = SrsRtcSignalingParse(window.location);
-    conf.room && $('#txt_room').val(conf.room);
+    $('#txt_url').val('webrtc://' + conf.host + '/live/livestream');
 
-    // Update href for all navs.
-    $('ul.srs_nav').children('li').not('.srs_ignore').children('a').each(function (i, e) {
-      $(e).attr('href', $(e).attr('href') + (conf.rawQuery||''));
-    });
     var publishVideo = async function() {
-      var host = $('#txt_host').val();
-      var room = $('#txt_room').val();
-      var display = $('#txt_display').val();
       is_video_push = true
       is_audio_push = true
-      await startPublish(host, room, display);
-      console.log('startPublish video done')
+      await startPublish();
     }
-
-    $("#btn_start").click(startDemo);
     $("#btn_publish_video").click(publishVideo);
-    if (conf.autostart) {
-      startDemo();
-    }
   });
 </script>

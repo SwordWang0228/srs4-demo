@@ -93,8 +93,11 @@ function build_default_rtc_url(query) {
     console.log('?api=x to overwrite WebRTC API(1985).');
     console.log('?schema=http|https to overwrite WebRTC API protocol.');
 
-    var server = (!query.server)? window.location.hostname:query.server;
-    var vhost = (!query.vhost)? window.location.hostname:query.vhost;
+    // const defaultSrsHost = window.location.hostname;
+    const defaultSrsHost = "srs4.openjianghu.org";
+
+    var server = (!query.server)? defaultSrsHost:query.server;
+    var vhost = (!query.vhost)? defaultSrsHost:query.vhost;
     var app = (!query.app)? "live":query.app;
     var stream = (!query.stream)? "livestream":query.stream;
     var api = query.api? ':'+query.api : '';
