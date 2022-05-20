@@ -24,6 +24,15 @@
 
  'use strict';
  
+ function SrsError(name, message) {
+    this.name = name;
+    this.message = message;
+    this.stack = (new Error()).stack;
+}
+SrsError.prototype = Object.create(Error.prototype);
+SrsError.prototype.constructor = SrsError;
+
+
  // Depends on adapter-7.4.0.min.js from https://github.com/webrtc/adapter
  // Async-awat-prmise based SRS RTC Publisher.
  function SrsRtcPublisherAsync(isHd) {
@@ -582,7 +591,7 @@
      senders.forEach(function (sender) {
          var params = sender.getParameters();
          params && params.codecs && params.codecs.forEach(function(c) {
-             if (kind && sender.track.kind !== kind) {
+             if (kind && sender.track && sender.track.kind !== kind) {
                  return;
              }
  
@@ -594,7 +603,7 @@
  
              s += c.mimeType.replace('audio/', '').replace('video/', '');
              s += ', ' + c.clockRate + 'HZ';
-             if (sender.track.kind === "audio") {
+             if (sender.track && sender.track.kind === "audio") {
                  s += ', channels: ' + c.channels;
              }
              s += ', pt: ' + c.payloadType;

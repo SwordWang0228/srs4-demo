@@ -1,144 +1,194 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SRS</title>
-    <meta charset="utf-8">
-    <style>
-        body{
-            padding-top: 30px;
-        }
-    </style>
-    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
-    <script type="text/javascript" src="js/jquery-1.10.2.min.js"></script>
-    <script type="text/javascript" src="js/axios.min.js"></script>
-    <script type="text/javascript" src="js/adapter-7.4.0.min.js"></script>
-    <script type="text/javascript" src="js/srs.sdk.js"></script>
-    <script type="text/javascript" src="js/winlin.utility.js"></script>
-    <script type="text/javascript" src="js/srs.page.js"></script>
+  <title>SRS</title>
+  <meta charset="utf-8">
+  <style>
+    body{
+      padding-top: 30px;
+    }
+  </style>
+  <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
+  <script type="text/javascript" src="js/jquery-1.10.2.min.js"></script>
+  <script type="text/javascript" src="js/axios.min.js"></script>
+  <script type="text/javascript" src="js/adapter-7.4.0.min.js"></script>
+  <script type="text/javascript" src="js/srs.sdk.js"></script>
+  <script type="text/javascript" src="js/srs.sig.js"></script>
 </head>
 <body>
-<img src='https://ossrs.net/gif/v1/sls.gif?site=ossrs.net&path=/player/rtcpublisher'/>
+<img src='https://ossrs.net/gif/v1/sls.gif?site=ossrs.net&path=/player/room' />
 <div class="navbar navbar-fixed-top">
-    <div class="navbar-inner">
-        <div class="container">
-        <a class="brand" href="https://github.com/ossrs/srs">SRS</a>
-        <div class="nav-collapse collapse">
-            <ul class="nav srs_nav">
-            <li><a href="rtcPlayer.html">RTC播放器</a></li>
-            <li class="active"><a id="nav_rtc_publisher" href="rtc_publisher.html">RTC推流</a></li>
-            <li><a href="one2oneAudio.html">一对一音频</a></li>
-            <li><a href="one2oneVideo.html">一对一音视频</a></li>
-            <li class="active"><a href="roomAudio.html">多人音频</a></li>
-            <li><a href="roomVideo.html">多人视频</a></li>
-            <li><a href="roomPlayMusic.html">多人音频+音乐</a></li>
-            <li class="srs_ignore">
-                <a href="https://github.com/ossrs/signaling">
-                <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/ossrs/signaling?style=social">
-                </a>
-            </li>
-            </ul>
-        </div>
-        </div>
+  <div class="navbar-inner">
+    <div class="container">
+      <a class="brand" href="https://github.com/ossrs/srs">SRS</a>
+      <div class="nav-collapse collapse">
+        <ul class="nav srs_nav">
+          <li><a href="rtcPlayer.html">RTC播放器</a></li>
+          <li class="active"><a href="rtcPublisher.html">RTC推流</a></li>
+          <li><a href="one2oneAudio.html">一对一音频</a></li>
+          <li><a href="one2oneVideo.html">一对一音视频</a></li>
+          <li><a href="roomAudio.html">多人音频</a></li>
+          <li><a href="roomVideo.html">多人视频</a></li>
+          <li><a href="roomPlayMusic.html">多人音频+音乐</a></li>
+          <li class="srs_ignore">
+            <a href="https://github.com/ossrs/signaling">
+              <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/ossrs/signaling?style=social">
+            </a>
+          </li>
+        </ul>
+      </div>
     </div>
+  </div>
 </div>
 <div class="container">
-    <div class="form-inline">
-        URL:
-        <input type="text" id="txt_url" class="input-xxlarge" value="">
-        <button class="btn btn-primary" id="btn_publish">开始推流</button>
+  <div class="form-inline">
+    SRS:
+    <input type="text" id="txt_host" class="input-medium" value="">
+    Room:
+    <input type="text" id="txt_room" class="input-small" value="live">
+    Display:
+    <input type="text" id="txt_display" class="input-small" value="">
+    <button class="btn btn-primary" id="btn_start">加入房间</button>
+    <!--<button class="btn btn-primary" id="btn_publish_audio">开始推音频流</button>-->
+    <button class="btn btn-primary" id="btn_publish_video">开始推音视频流</button>
+  </div>
+
+  <div class="row srs_players">
+    <div class="span4 hide" id="publisher">
+      <label></label>
+      <video id="rtc_media_publisher" width="310" autoplay muted controls></video>
+
+      <label></label>
+      <span id='self'></span>
     </div>
-
-    <label></label>
-    <video id="rtc_media_player" width="320" autoplay muted></video>
-
-    <label></label>
-    SessionID: <span id='sessionid'></span>
-
-    <label></label>
-    Audio: <span id='acodecs'></span><br/>
-    Video: <span id='vcodecs'></span>
-
-    <label></label>
-    Simulator: <a href='#' id='simulator-drop'>Drop</a>
-
-    <footer>
-        <p></p>
-        <p><a href="https://github.com/ossrs/srs">SRS Team &copy; 2020</a></p>
-    </footer>
+    <div class="span4 hide" id="player">
+      <label></label>
+      <video id="rtc_media_video_player" width="310" autoplay muted controls></video>
+      <label></label>
+      <span id='video'></span>
+      <span id='audio'></span>
+    </div>
+  </div>
 </div>
 <script type="text/javascript">
-$(function(){
+  var sig = null;
+  var publisher = null;
+  var is_audio_push = false;
+  var is_video_push = false;
+  var current_audio_publishing = false;
+  var current_video_publishing = false;
+  var players = {}; // Key is display, value is a player object.
+  $(function(){
+    console.log('?wss=x to specify the websocket schema, ws or wss');
+    console.log('?wsh=x to specify the websocket server ip');
+    console.log('?wsp=x to specify the websocket server port');
+    console.log('?host=x to specify the SRS server');
+    console.log('?room=x to specify the room to join');
+    console.log('?display=x to specify your nick name');
 
-    const urlPathList = window.location.pathname.split('/');
-    const currentPageName = urlPathList && urlPathList[urlPathList.length - 1];
-    $(".srs_nav").addClass("intro");
-
-    var sdk = null; // Global handler to do cleanup when republishing.
-    var startPublish = function() {
-        $('#rtc_media_player').show();
-
-        // Close PC when user replay.
-        if (sdk) {
-            sdk.close();
-        }
-        sdk = new SrsRtcPublisherAsync();
-
-        // User should set the stream when publish is done, @see https://webrtc.org/getting-started/media-devices
-        // However SRS SDK provides a consist API like https://webrtc.org/getting-started/remote-streams
-        $('#rtc_media_player').prop('srcObject', sdk.stream);
-        // Optional callback, SDK will add track to stream.
-        // sdk.ontrack = function (event) { console.log('Got track', event); sdk.stream.addTrack(event.track); };
-
-        // https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#getting_the_supported_codecs
-        sdk.pc.onicegatheringstatechange = function (event) {
-            if (sdk.pc.iceGatheringState === "complete") {
-                $('#acodecs').html(SrsRtcFormatSenders(sdk.pc.getSenders(), "audio"));
-                $('#vcodecs').html(SrsRtcFormatSenders(sdk.pc.getSenders(), "video"));
-            }
-        };
-
-        // For example: webrtc://r.ossrs.net/live/livestream
-        var url = $("#txt_url").val();
-        sdk.publish(url).then(function(session){
-            $('#sessionid').html(session.sessionid);
-            $('#simulator-drop').attr('href', session.simulator + '?drop=1&username=' + session.sessionid);
-        }).catch(function (reason) {
-            // Throw by sdk.
-            if (reason instanceof SrsError) {
-                if (reason.name === 'HttpsRequiredError') {
-                    alert(`WebRTC推流必须是HTTPS或者localhost：${reason.name} ${reason.message}`);
-                } else {
-                    alert(`${reason.name} ${reason.message}`);
-                }
-            }
-            // See https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia#exceptions
-            if (reason instanceof DOMException) {
-                if (reason.name === 'NotFoundError') {
-                    alert(`找不到麦克风和摄像头设备：getUserMedia ${reason.name} ${reason.message}`);
-                } else if (reason.name === 'NotAllowedError') {
-                    alert(`你禁止了网页访问摄像头和麦克风：getUserMedia ${reason.name} ${reason.message}`);
-                } else if (['AbortError', 'NotAllowedError', 'NotFoundError', 'NotReadableError', 'OverconstrainedError', 'SecurityError', 'TypeError'].includes(reason.name)) {
-                    alert(`getUserMedia ${reason.name} ${reason.message}`);
-                }
-            }
-
-            sdk.close();
-            $('#rtc_media_player').hide();
-            console.error(reason);
-        });
+    var startDemo = async function () {
+      var host = $('#txt_host').val();
+      var room = $('#txt_room').val();
+      var display = $('#txt_display').val();
     };
 
-    $('#rtc_media_player').hide();
-    var query = parse_query_string();
-    srs_init_rtc("#txt_url", query);
+    var startPublish = function (host, room, display) {
 
-    $("#btn_publish").click(startPublish);
-    // Never play util windows loaded @see https://github.com/ossrs/srs/issues/2732
-    if (query.autostart === 'true') {
-        window.addEventListener("load", function(){ startPublish(); });
+      $(".ff_first").each(function(i,e) {
+        $(e).text(display);
+      });
+
+      var url = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
+
+      $('#rtc_media_publisher').show();
+      $('#publisher').show();
+
+      if (publisher) {
+
+        publisher.close()
+      }
+      publisher = new SrsRtcPublisherAsync();
+
+      $('#rtc_media_publisher').prop('srcObject', publisher.stream);
+    //   const {publishVideo, publishAudio} = checkPublisherStatus()
+        // console.log('publishVideo, publishAudio---', publishVideo, publishAudio)
+      return publisher.publish(url, is_video_push, is_audio_push).then(function(session){
+          $('#self').text('Self: ' + url);
+        //   console.log('getSenders---', publisher.pc.getSenders())
+        //   console.log('getVideoTracks---', publisher.stream.getVideoTracks())
+        //   console.log('getAudioTracks---', publisher.stream.getAudioTracks())
+      }).catch(function (reason) {
+        publisher.close();
+
+        $('#rtc_media_publisher').hide();
+
+
+        console.log(reason.message);
+      });
+    };
+    
+    var startPlay = function (host, room, display, peer) {
+      $(".ff_second").each(function(i,e) {
+        $(e).text(display);
+      });
+
+      // Remove exists.
+      if (players[display]) {
+        players[display].ui.remove();
+        if (players[display].player) {
+            players[display].player.close();
+        }
+      }
+
+      // Clone a player from template.
+      let ui = $('#player').clone().attr('id', 'player-' + display);
+      let video = ui.children('#rtc_media_video_player')
+      video.hide()
+      let player = new SrsRtcPlayerAsync();
+
+      players[display] = {ui:ui, video:video, player};
+      $('.srs_players').append(ui);
+
+      const url = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
+      // Start play for this user.
+
+      video.show();
+      ui.show();
+
+      video.prop('srcObject', player.stream);
+
+      player.play(url).then(function(session){
+        ui.children('#video').text('video: ' + url);
+        video.prop('muted', false);
+      }).catch(function (reason) {
+        player.close();
+        video.hide();
+        console.log(reason);
+      });
+    };
+
+    // Pass-by to SRS url.
+    let conf = SrsRtcSignalingParse(window.location);
+    conf.room && $('#txt_room').val(conf.room);
+
+    // Update href for all navs.
+    $('ul.srs_nav').children('li').not('.srs_ignore').children('a').each(function (i, e) {
+      $(e).attr('href', $(e).attr('href') + (conf.rawQuery||''));
+    });
+    var publishVideo = async function() {
+      var host = $('#txt_host').val();
+      var room = $('#txt_room').val();
+      var display = $('#txt_display').val();
+      is_video_push = true
+      is_audio_push = true
+      await startPublish(host, room, display);
+      console.log('startPublish video done')
     }
-});
-</script>
-</body>
-</html>
 
+    $("#btn_start").click(startDemo);
+    $("#btn_publish_video").click(publishVideo);
+    if (conf.autostart) {
+      startDemo();
+    }
+  });
+</script>
