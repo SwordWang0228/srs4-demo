@@ -192,7 +192,7 @@ async function startDemo(stream){
 		}
 
 	};
-	await sig.connect("wss", "192.168.56.101", "room1", "gavin");
+	await sig.connect("ws", "192.168.31.91:1989", "room1", "gavin");
 
 	let r0 = await sig.send({action:'join', room:"room1", display:"gavin"});
 	console.log('Signaling: join ok', r0);
@@ -205,7 +205,7 @@ async function startDemo(stream){
 
 async function startPublish(isHd,stream) {
 
-	var url = 'webrtc://192.168.56.101/room1/gavin';
+	var url = 'webrtc://192.168.31.91/room1/gavin';
 
 	if (publisher) {
 		publisher.close();
