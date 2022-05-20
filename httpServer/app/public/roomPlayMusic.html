@@ -132,13 +132,13 @@
 
         if (msg.event === 'audioSeekTo') {
           if (msg.peer && msg.peer.display !== display) {
-            seekToAudio(msg.audio);
+            seekToAudio(msg.data.audioUrl);
           }
         }
 
         if (msg.event === 'audioPlay') {
           if (msg.peer && msg.peer.display !== display) {
-            startPlayAudio(msg.audio);
+            startPlayAudio(msg.data.audioUrl);
           }
         }
 
@@ -265,7 +265,7 @@
     // Pass-by to SRS url.
     let conf = SrsRtcSignalingParse(window.location);
     $('#txt_host').val(conf.host);
-    conf.room && $('#txt_room').val(conf.room);
+    // conf.room && $('#txt_room').val(conf.room);
     $('#txt_display').val(conf.display);
 
     // Update href for all navs.
@@ -310,9 +310,8 @@
     $(musicBoxList).children('li').on('click', (event) => {
       var filename = $(event.target).text();
       const audioUrl = location.origin + '/public/audio/' + filename
-      sig.send({action:'audioPlay', room: conf.room, display: conf.display, audioUrl})
-      // TODO: socket 消息触发播放
-      // startPlayAudio(audioUrl);
+      sig.send({action:'audioPlay', room: $('#txt_room').val(), display: conf.display, audioUrl})
+      startPlayAudio(audioUrl);
     })
 
     $("#btn_start_music").click(selectMusic)
@@ -330,12 +329,12 @@
       audioContext.ontimeupdate = function () {
         if(Math.abs(audioContext.currentTime - audioPrevTime) > 2000) {
           audioCurrentTimePercent = (audioContext.currentTime / audioContext.duration) * 100;
-          sig.send({action:'audioSeekTo', room: conf.room, display: conf.display, position: audioCurrentTimePercent})
+          sig.send({action:'audioSeekTo', room: $('#txt_room').val(), display: conf.display, position: audioCurrentTimePercent})
         }
         audioPrevTime = audioContext.currentTime;
       };
       audioContext.onpause = function () {
-        sig.send({action:'pauseAudio', room: conf.room, display: conf.display})
+        sig.send({action:'pauseAudio', room: $('#txt_room').val(), display: conf.display})
       };
       audioContext.onended = function () {
       };

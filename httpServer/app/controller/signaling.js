@@ -69,10 +69,23 @@ async function signalingInit() {
         }))
         notify(data_obj.msg.room, peer, data_obj.msg.action, data_obj.msg.param, data_obj.msg.data)
       } else {
-        return ws.send(JSON.stringify({
+        if (!room_obj[data_obj.msg.room]) {
+          return;
+        }
+        const peer = room_obj[data_obj.msg.room].find(item=>item.display == data_obj.msg.display)
+        if (!peer) {
+          return;
+        }
+        ws.send(JSON.stringify({
           tid: data_obj.tid,
-          msg: `Invalid msg: ${JSON.stringify(data_obj.msg)}`
+          msg: {
+            action: "notify",
+            event: data_obj.msg.action,
+            room: data_obj.msg.room,
+            data: { ...data_obj.msg }
+          }
         }))
+        notify(data_obj.msg.room, peer, data_obj.msg.action, data_obj.msg.param, { ...data_obj.msg })
       }
     });
     ws.on('close', function close(a, b, c) {
@@ -102,6 +115,7 @@ async function notify(room, peer, event, param, data) {
     if (socket_client) {
       socket_client.send(JSON.stringify({
         msg: {
+          room: room,
           action: "notify",
           event: event,
           param: param,
