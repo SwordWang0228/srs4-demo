@@ -82,10 +82,11 @@ async function signalingInit() {
             action: "notify",
             event: data_obj.msg.action,
             room: data_obj.msg.room,
-            data: { ...data_obj.msg }
+            param: data_obj.msg.param,
+            data: data_obj.msg.data,
           }
         }))
-        notify(data_obj.msg.room, peer, data_obj.msg.action, data_obj.msg.param, { ...data_obj.msg })
+        notify(data_obj.msg.room, peer, data_obj.msg.action, data_obj.msg.param, data_obj.msg.data)
       }
     });
     ws.on('close', function close(a, b, c) {

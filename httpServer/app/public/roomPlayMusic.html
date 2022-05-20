@@ -22,6 +22,9 @@
       border-bottom: 1px solid #eeeeee;
       padding: 3px 10px;
     }
+    #backgroudAudio {
+      display: none;
+    }
   </style>
   <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
   <script type="text/javascript" src="js/jquery-1.10.2.min.js"></script>
@@ -85,6 +88,11 @@
       <span id='audio'></span>
     </div>
   </div>
+  <div id="backgroudAudio">
+    <audio id="backgroudAudio_audio" controls>
+      <source id="backgroudAudio_source" type="audio/mpeg">
+    </audio>
+  </div>
   <div id="musicBoxList">
     <li>Jackson F. Smith - Cantina Rag.mp3</li>
     <li>Ken Hamm - Buckbreak.mp3</li>
@@ -102,13 +110,6 @@
   var players = {}; // Key is display, value is a player object.
   var audioContext, audioCurrentTimePercent, audioPrevTime = 0;
   $(function(){
-    console.log('?wss=x to specify the websocket schema, ws or wss');
-    console.log('?wsh=x to specify the websocket server ip');
-    console.log('?wsp=x to specify the websocket server port');
-    console.log('?host=x to specify the SRS server');
-    console.log('?room=x to specify the room to join');
-    console.log('?display=x to specify your nick name');
-    initAudio();
     var startDemo = async function () {
       var host = $('#txt_host').val();
       var room = $('#txt_room').val();
@@ -132,7 +133,13 @@
 
         if (msg.event === 'audioSeekTo') {
           if (msg.peer && msg.peer.display !== display) {
-            seekToAudio(msg.data.audioUrl);
+            if (!audioContext) {
+              startPlayAudio(msg.data.audioUrl);
+            }
+            if (audioContext.paused) {
+              audioContext.play();
+            }
+            seekToAudio(msg.data);
           }
         }
 
@@ -310,48 +317,57 @@
     $(musicBoxList).children('li').on('click', (event) => {
       var filename = $(event.target).text();
       const audioUrl = location.origin + '/public/audio/' + filename
-      sig.send({action:'audioPlay', room: $('#txt_room').val(), display: conf.display, audioUrl})
-      startPlayAudio(audioUrl);
+      sig.send({action:'audioPlay', room: $('#txt_room').val(), display: conf.display, data: { audioUrl} })
+      startPlayAudio(audioUrl, true);
     })
 
     $("#btn_start_music").click(selectMusic)
 
-    function initAudio() {
-      audioContext = new Audio;
-      audioContext.oncanplay = function () {
-        audioContext.play().then((value) => {
-        }).catch(async (err) => {
-          // 不支持自动播放
-        });
-      };
-      audioContext.onplay = function () {
-      };
-      audioContext.ontimeupdate = function () {
-        if(Math.abs(audioContext.currentTime - audioPrevTime) > 2000) {
-          audioCurrentTimePercent = (audioContext.currentTime / audioContext.duration) * 100;
-          sig.send({action:'audioSeekTo', room: $('#txt_room').val(), display: conf.display, position: audioCurrentTimePercent})
-        }
-        audioPrevTime = audioContext.currentTime;
-      };
-      audioContext.onpause = function () {
-        sig.send({action:'pauseAudio', room: $('#txt_room').val(), display: conf.display})
-      };
-      audioContext.onended = function () {
-      };
-    }
+    // function initAudio() {
+    //   audioContext = new Audio;
+    //   audioContext.oncanplay = function () {
+    //     audioContext.play().then((value) => {
+    //     }).catch(async (err) => {
+    //       // 不支持自动播放
+    //     });
+    //   };
+    //   audioContext.onplay = function () {
+    //   };
+    //   audioContext.ontimeupdate = function () {
+    //     if(Math.abs(audioContext.currentTime - audioPrevTime) > 2000) {
+    //       audioCurrentTimePercent = (audioContext.currentTime / audioContext.duration) * 100;
+    //       sig.send({action:'audioSeekTo', room: $('#txt_room').val(), display: conf.display, position: audioCurrentTimePercent})
+    //     }
+    //     audioPrevTime = audioContext.currentTime;
+    //   };
+    //   audioContext.onpause = function () {
+    //     sig.send({action:'pauseAudio', room: $('#txt_room').val(), display: conf.display})
+    //   };
+    //   audioContext.onended = function () {
+    //   };
+    // }
 
     // 开始播放音乐
-    function startPlayAudio(audioUrl) {
-      if(!audioContext) {
-        audioContext = new Audio(audioUrl);
+    function startPlayAudio(audioUrl, showAudio=false) {
+      if (showAudio === true) {
+        $('#backgroudAudio').show();
+        $('#backgroudAudio_source').attr("src", audioUrl);
+        $('#backgroudAudio_audio').load();
+        $('#backgroudAudio_audio').trigger('play');
       } else {
-        audioContext.pause();
-        audioContext.src = audioUrl;
+        if(!audioContext) {
+          audioContext = new Audio(audioUrl);
+          audioContext.play();
+        } else {
+          audioContext.pause();
+          audioContext.src = audioUrl;
+          audioContext.play();
+        }
       }
     }
 
     // 音乐位置跳转
-    async function seekToAudio({position}) {
+    async function seekToAudio({audioUrl, currentTime, duration, position}) {
       if (audioContext) {
         const newDuration = audioContext.duration * (position / 100);
         if ('fastSeek' in audioContext) {
@@ -371,5 +387,37 @@
         }
       }
     }
+
+    function audio_ontimeupdate() {
+      const paused = document.getElementById('backgroudAudio_audio').paused;
+      const currentTime = document.getElementById('backgroudAudio_audio').currentTime;
+      const duration = document.getElementById('backgroudAudio_audio').duration;
+      const audioUrl = $('#backgroudAudio_source').attr("src");
+      if(!paused && Math.abs(currentTime - audioPrevTime) > 3) {
+        audioCurrentTimePercent = (currentTime / duration) * 100;
+        sig.send({action:'audioSeekTo', room: $('#txt_room').val(), display: conf.display, data: { audioUrl, currentTime, duration, position: audioCurrentTimePercent } })
+        console.log("[audio_ontimeupdate] audioSeekTo", { currentTime, audioPrevTime });
+        audioPrevTime = currentTime;
+      }
+    }
+
+    function audio_onpause() {
+      sig.send({action:'pauseAudio', room: $('#txt_room').val(), display: conf.display, data: {}})
+    }
+
+    function audio_onplay() {
+      const currentTime = document.getElementById('backgroudAudio_audio').currentTime;
+      const duration = document.getElementById('backgroudAudio_audio').duration;
+      const audioUrl = $('#backgroudAudio_source').attr("src");
+      audioCurrentTimePercent = (currentTime / duration) * 100;
+      sig.send({action:'audioSeekTo', room: $('#txt_room').val(), display: conf.display, data: { audioUrl, currentTime, duration, position: audioCurrentTimePercent } })
+      console.log("[audio_ontimeupdate] audioSeekTo", { currentTime, audioPrevTime });
+      audioPrevTime = currentTime;
+    }
+
+    document.getElementById('backgroudAudio_audio').ontimeupdate = audio_ontimeupdate;
+    document.getElementById('backgroudAudio_audio').onpause = audio_onpause;
+    document.getElementById('backgroudAudio_audio').onplay = audio_onplay;
+
   });
 </script>
