@@ -109,10 +109,11 @@ SrsError.prototype.constructor = SrsError;
          if (streamEx) {
             const videoTracks = streamEx.getVideoTracks();
             const audioTracks = streamEx.getAudioTracks();
-            streamEx.getTracks().forEach(function (track) {
-                self.pc.addTrack(track);
-                self.ontrack && self.ontrack({track: track});
-            });
+            streamEx.getTracks().forEach(track => self.pc.addTrack(track, streamEx));
+            // streamEx.getTracks().forEach(function (track) {
+            //     self.pc.addTrack(track);
+            //     self.ontrack && self.ontrack({track: track});
+            // });
          }
 
          if (video) {
