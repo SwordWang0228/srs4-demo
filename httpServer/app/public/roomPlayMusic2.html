@@ -204,6 +204,8 @@
       });
 
       var url = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
+      var backgroundUrl = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
+
 
       $('#rtc_media_publisher').show();
       $('#publisher').show();
@@ -215,19 +217,18 @@
       publisher = new SrsRtcPublisherAsync();
 
       $('#rtc_media_publisher').prop('srcObject', publisher.stream);
-      //   const {publishVideo, publishAudio} = checkPublisherStatus()
+      // const {publishVideo, publishAudio} = checkPublisherStatus()
       // console.log('publishVideo, publishAudio---', publishVideo, publishAudio)
-      return publisher.publish(url, is_video_push, is_audio_push).then(function(session){
+      const streamEx = document.getElementById('backgroudAudio_audio').captureStream();
+      // return publisher.publish(url, is_video_push, is_audio_push, streamEx).then(function(session){
+      return publisher.publish(url, false, false, streamEx).then(function(session){
         $('#self').text('Self: ' + url);
         //   console.log('getSenders---', publisher.pc.getSenders())
         //   console.log('getVideoTracks---', publisher.stream.getVideoTracks())
         //   console.log('getAudioTracks---', publisher.stream.getAudioTracks())
       }).catch(function (reason) {
         publisher.close();
-
         $('#rtc_media_publisher').hide();
-
-
         console.log(reason.message);
       });
     };
@@ -319,7 +320,7 @@
     $(musicBoxList).children('li').on('click', (event) => {
       var filename = $(event.target).text();
       const audioUrl = location.origin + '/public/audio/' + filename
-      sig.send({action:'audioPlay', room: $('#txt_room').val(), display: conf.display, data: { audioUrl} })
+      // sig.send({action:'audioPlay', room: $('#txt_room').val(), display: conf.display, data: { audioUrl} })
       startPlayAudio(audioUrl, true);
     })
 
@@ -417,9 +418,11 @@
       audioPrevTime = currentTime;
     }
 
-    document.getElementById('backgroudAudio_audio').ontimeupdate = audio_ontimeupdate;
-    document.getElementById('backgroudAudio_audio').onpause = audio_onpause;
-    document.getElementById('backgroudAudio_audio').onplay = audio_onplay;
+    // document.getElementById('backgroudAudio_audio').ontimeupdate = audio_ontimeupdate;
+    // document.getElementById('backgroudAudio_audio').onpause = audio_onpause;
+    // document.getElementById('backgroudAudio_audio').onplay = audio_onplay;
+
+    // document.getElementById('backgroudAudio_audio').captureStream
 
   });
 </script>

@@ -88,7 +88,7 @@ SrsError.prototype.constructor = SrsError;
      // or any other information, will pass-by in the query:
      //      webrtc://r.ossrs.net/live/livestream?vhost=xxx
      //      webrtc://r.ossrs.net/live/livestream?token=xxx
-     self.publish = async function (url, video, audio) {
+     self.publish = async function (url, video, audio, streamEx) {
          var conf = self.__internal.prepareUrl(url);
          self.pc.addTransceiver("audio", {direction: "sendonly"});    
          self.pc.addTransceiver("video", {direction: "sendonly"});
@@ -106,7 +106,15 @@ SrsError.prototype.constructor = SrsError;
              });    
          }
          
-         
+         if (streamEx) {
+            const videoTracks = streamEx.getVideoTracks();
+            const audioTracks = streamEx.getAudioTracks();
+            streamEx.getTracks().forEach(function (track) {
+                self.pc.addTrack(track);
+                self.ontrack && self.ontrack({track: track});
+            });
+         }
+
          if (video) {
              if(isHd == true){
                  var streamDesktop = await navigator.mediaDevices.getDisplayMedia(self.constraintsDesktopHd); 
