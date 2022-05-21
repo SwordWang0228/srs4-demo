@@ -117,8 +117,10 @@ function SrsRtcSignalingParse(location) {
     let display = location.href.split('display=')[1];
     display = display? display.split('&')[0] : Number(parseInt(new Date().getTime()*Math.random()*100)).toString(16).toString(16).substr(0, 7);
 
-    let autostart = location.href.split('autostart=')[1];
-    autostart = autostart && autostart.split('&')[0] === 'true';
+    // let autostart = location.href.split('autostart=')[1];
+    // autostart = autostart && autostart.split('&')[0] === 'true';
+    // 方便演示，这里设置自动 进入房间
+    let autostart = true;
 
     // Remove data in query.
     let rawQuery = query;
