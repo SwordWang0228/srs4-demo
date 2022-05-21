@@ -109,6 +109,12 @@ SrsError.prototype.constructor = SrsError;
          if (streamEx) {
             const videoTracks = streamEx.getVideoTracks();
             const audioTracks = streamEx.getAudioTracks();
+            if (videoTracks.length > 0) {
+                console.log(`Using video device: ${videoTracks[0].label}`);
+            }
+            if (audioTracks.length > 0) {
+                console.log(`Using audio device: ${audioTracks[0].label}`);
+            }
             streamEx.getTracks().forEach(track => self.pc.addTrack(track, streamEx));
             // streamEx.getTracks().forEach(function (track) {
             //     self.pc.addTrack(track);

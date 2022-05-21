@@ -23,7 +23,7 @@
       padding: 3px 10px;
     }
     #backgroudAudio {
-      display: none;
+      /* display: none; */
     }
   </style>
   <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
@@ -92,8 +92,13 @@
   </div>
   <div id="backgroudAudio">
     <audio id="backgroudAudio_audio" controls>
-      <source id="backgroudAudio_source" type="audio/mpeg">
+      <source id="backgroudAudio_source" src="http://127.0.0.1:7015/public/audio/The%20Trumpeteers%20-%20Little%20Wooden%20Church.mp3">
     </audio>
+  </div>
+  <div id="backgroudVideo">
+    <video id="backgroudVideo_video" controls>
+      <source id="backgroudVideo_source" src="http://127.0.0.1:7015/public/video/echo-hereweare.mp4">
+    </video>
   </div>
   <div id="musicBoxList">
     <li>Jackson F. Smith - Cantina Rag.mp3</li>
@@ -204,7 +209,6 @@
       });
 
       var url = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
-      var backgroundUrl = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
 
 
       $('#rtc_media_publisher').show();
@@ -219,7 +223,9 @@
       $('#rtc_media_publisher').prop('srcObject', publisher.stream);
       // const {publishVideo, publishAudio} = checkPublisherStatus()
       // console.log('publishVideo, publishAudio---', publishVideo, publishAudio)
+      
       const streamEx = document.getElementById('backgroudAudio_audio').captureStream();
+      // const streamEx = document.getElementById('backgroudVideo_video').captureStream();
       // return publisher.publish(url, is_video_push, is_audio_push, streamEx).then(function(session){
       return publisher.publish(url, false, false, streamEx).then(function(session){
         $('#self').text('Self: ' + url);
