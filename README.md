@@ -41,3 +41,4 @@ npm run dev
 >  - srs4.openjianghu.org ===》 https://srs4.openjianghu.org/srs/httpApiProxy ====> webrtc://47.243.6.203:18000/live/2ae7abd
 
 
+docker run -d --name srs4-demo-srs -h="masterHost" -v=/www/wwwroot/srs4-demo/srsConf/srs.conf:/usr/local/srs/conf/srs.conf -p 11935:11935 -p 11985:11985 -p 18080:18080 --env CANDIDATE="47.243.6.203" -p 18000:18000/udp ossrs/srs:v4.0-b10 ./objs/srs -c conf/srs.conf
