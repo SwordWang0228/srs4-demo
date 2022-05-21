@@ -7,6 +7,24 @@
     body{
       padding-top: 30px;
     }
+    #musicBoxList {
+      border: 1px solid #ccc;
+      width: 500px;
+      height: 500px;
+      border-radius: 5px;
+      display: none;
+    }
+    #musicBoxList li:hover {
+      background: #eeeeee;
+    }
+    #musicBoxList li {
+      display: block;
+      border-bottom: 1px solid #eeeeee;
+      padding: 3px 10px;
+    }
+    #backgroudAudio {
+      display: none;
+    }
   </style>
   <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
   <script type="text/javascript" src="js/jquery-1.10.2.min.js"></script>
@@ -28,10 +46,10 @@
           <li><a href="flvPlayer.html">FLV播放器</a></li>
           <li><a href="one2oneAudio.html">一对一纯音频</a></li>
           <li><a href="one2oneVideo.html">一对一音视频</a></li>
-          <li class="active"><a href="roomAudio.html">多人纯音频</a></li>
+          <li><a href="roomAudio.html">多人纯音频</a></li>
           <li><a href="roomVideo.html">多人音视频</a></li>
           <li><a href="roomPlayMusic.html">多人纯音频+音乐</a></li>
-          <li><a href="roomPlayMusic2.html">多人纯音频+音乐2</a></li>
+          <li class="active"><a href="roomPlayMusic2.html">多人纯音频+音乐2</a></li>
           <li class="srs_ignore">
             <a href="https://github.com/ossrs/signaling">
               <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/ossrs/signaling?style=social">
@@ -52,6 +70,7 @@
     <input type="text" id="txt_display" class="input-small" value="">
     <button class="btn btn-primary" id="btn_start">加入房间</button>
     <button class="btn btn-primary" id="btn_publish_audio">开始推音频流</button>
+    <button class="btn btn-primary" id="btn_start_music">播放音乐</button>
     <!--<button class="btn btn-primary" id="btn_publish_video">开始推视频流</button>-->
   </div>
 
@@ -71,6 +90,17 @@
       <span id='audio'></span>
     </div>
   </div>
+  <div id="backgroudAudio">
+    <audio id="backgroudAudio_audio" controls>
+      <source id="backgroudAudio_source" type="audio/mpeg">
+    </audio>
+  </div>
+  <div id="musicBoxList">
+    <li>Jackson F. Smith - Cantina Rag.mp3</li>
+    <li>Ken Hamm - Buckbreak.mp3</li>
+    <li>The Trumpeteers - Little Wooden Church.mp3</li>
+    <li>Voodoo Suite - Little Grass Shack.mp3</li>
+  </div>
 </div>
 <script type="text/javascript">
   var sig = null;
@@ -80,14 +110,8 @@
   var current_audio_publishing = false;
   var current_video_publishing = false;
   var players = {}; // Key is display, value is a player object.
+  var audioContext, audioCurrentTimePercent, audioPrevTime = 0;
   $(function(){
-    console.log('?wss=x to specify the websocket schema, ws or wss');
-    console.log('?wsh=x to specify the websocket server ip');
-    console.log('?wsp=x to specify the websocket server port');
-    console.log('?host=x to specify the SRS server');
-    console.log('?room=x to specify the room to join');
-    console.log('?display=x to specify your nick name');
-
     var startDemo = async function () {
       var host = $('#txt_host').val();
       var room = $('#txt_room').val();
@@ -108,6 +132,33 @@
           }
         }
 
+
+        if (msg.event === 'audioSeekTo') {
+          if (msg.peer && msg.peer.display !== display) {
+            if (!audioContext) {
+              startPlayAudio(msg.data.audioUrl);
+            }
+            if (audioContext.paused) {
+              audioContext.play();
+            }
+            seekToAudio(msg.data);
+          }
+        }
+
+        if (msg.event === 'audioPlay') {
+          if (msg.peer && msg.peer.display !== display) {
+            startPlayAudio(msg.data.audioUrl);
+          }
+        }
+
+        if (msg.event === 'pauseAudio') {
+          if (msg.peer && msg.peer.display !== display) {
+            if(audioContext) {
+              audioContext.pause();
+            }
+          }
+        }
+
         // Remove dead players.
         if (msg.event === 'join' || msg.event === 'leave') {
           $.each(players, function(k, obj) {
@@ -117,12 +168,12 @@
             });
 
             if (!stillAlive) {
-                if (obj.video_player) {
-                    obj.video_player.close();
-                }
-                if (obj.audio_player) {
-                    obj.audio_player.close();
-                }
+              if (obj.video_player) {
+                obj.video_player.close();
+              }
+              if (obj.audio_player) {
+                obj.audio_player.close();
+              }
 
               obj.ui.remove();
             }
@@ -134,10 +185,10 @@
       let r0 = await sig.send({action:'join', room:room, display:display});
       console.log('Signaling: join ok', r0);
 
-    //   // Start publish media if signaling is ok.
-    //   await startPublish(host, room, display);
-    //   let r1 = await sig.send({action:'publish', room:room, display:display});
-    //   console.log('Signaling: publish ok', r1);
+      //   // Start publish media if signaling is ok.
+      //   await startPublish(host, room, display);
+      //   let r1 = await sig.send({action:'publish', room:room, display:display});
+      //   console.log('Signaling: publish ok', r1);
 
       // Play the stream already in room.
       for (let participant of r0.participants) {
@@ -164,10 +215,10 @@
       publisher = new SrsRtcPublisherAsync();
 
       $('#rtc_media_publisher').prop('srcObject', publisher.stream);
-    //   const {publishVideo, publishAudio} = checkPublisherStatus()
-        // console.log('publishVideo, publishAudio---', publishVideo, publishAudio)
+      //   const {publishVideo, publishAudio} = checkPublisherStatus()
+      // console.log('publishVideo, publishAudio---', publishVideo, publishAudio)
       return publisher.publish(url, is_video_push, is_audio_push).then(function(session){
-          $('#self').text('Self: ' + url);
+        $('#self').text('Self: ' + url);
         //   console.log('getSenders---', publisher.pc.getSenders())
         //   console.log('getVideoTracks---', publisher.stream.getVideoTracks())
         //   console.log('getAudioTracks---', publisher.stream.getAudioTracks())
@@ -189,7 +240,7 @@
       if (players[display]) {
         players[display].ui.remove();
         if (players[display].player) {
-            players[display].player.close();
+          players[display].player.close();
         }
       }
 
@@ -223,7 +274,7 @@
     // Pass-by to SRS url.
     let conf = SrsRtcSignalingParse(window.location);
     $('#txt_host').val(conf.host);
-    conf.room && $('#txt_room').val(conf.room);
+    // conf.room && $('#txt_room').val(conf.room);
     $('#txt_display').val(conf.display);
 
     // Update href for all navs.
@@ -246,7 +297,7 @@
       var host = $('#txt_host').val();
       var room = $('#txt_room').val();
       var display = $('#txt_display').val();
-        // Start publish media if signaling is ok.
+      // Start publish media if signaling is ok.
       is_audio_push = true
       await startPublish(host, room, display)
       current_audio_publishing = true
@@ -261,5 +312,114 @@
     if (conf.autostart) {
       startDemo();
     }
+
+    var selectMusic = function () {
+      $(musicBoxList).show();
+    }
+    $(musicBoxList).children('li').on('click', (event) => {
+      var filename = $(event.target).text();
+      const audioUrl = location.origin + '/public/audio/' + filename
+      sig.send({action:'audioPlay', room: $('#txt_room').val(), display: conf.display, data: { audioUrl} })
+      startPlayAudio(audioUrl, true);
+    })
+
+    $("#btn_start_music").click(selectMusic)
+
+    // function initAudio() {
+    //   audioContext = new Audio;
+    //   audioContext.oncanplay = function () {
+    //     audioContext.play().then((value) => {
+    //     }).catch(async (err) => {
+    //       // 不支持自动播放
+    //     });
+    //   };
+    //   audioContext.onplay = function () {
+    //   };
+    //   audioContext.ontimeupdate = function () {
+    //     if(Math.abs(audioContext.currentTime - audioPrevTime) > 2000) {
+    //       audioCurrentTimePercent = (audioContext.currentTime / audioContext.duration) * 100;
+    //       sig.send({action:'audioSeekTo', room: $('#txt_room').val(), display: conf.display, position: audioCurrentTimePercent})
+    //     }
+    //     audioPrevTime = audioContext.currentTime;
+    //   };
+    //   audioContext.onpause = function () {
+    //     sig.send({action:'pauseAudio', room: $('#txt_room').val(), display: conf.display})
+    //   };
+    //   audioContext.onended = function () {
+    //   };
+    // }
+
+    // 开始播放音乐
+    function startPlayAudio(audioUrl, showAudio=false) {
+      if (showAudio === true) {
+        $('#backgroudAudio').show();
+        $('#backgroudAudio_source').attr("src", audioUrl);
+        $('#backgroudAudio_audio').load();
+        $('#backgroudAudio_audio').trigger('play');
+      } else {
+        if(!audioContext) {
+          audioContext = new Audio(audioUrl);
+          audioContext.play();
+        } else {
+          audioContext.pause();
+          audioContext.src = audioUrl;
+          audioContext.play();
+        }
+      }
+    }
+
+    // 音乐位置跳转
+    async function seekToAudio({audioUrl, currentTime, duration, position}) {
+      if (audioContext) {
+        const newDuration = audioContext.duration * (position / 100);
+        if ('fastSeek' in audioContext) {
+          await audioContext.fastSeek(newDuration);
+        } else {
+          const canFastSeek = Array(audioContext.seekable.length)
+              .fill(0)
+              .some((v, i) => {
+                return (
+                    newDuration > audioContext.seekable.start(i) &&
+                    newDuration < audioContext.seekable.end(i)
+                );
+              });
+          if (canFastSeek) {
+            audioContext.currentTime = newDuration;
+          }
+        }
+      }
+    }
+
+    function audio_ontimeupdate() {
+      const paused = document.getElementById('backgroudAudio_audio').paused;
+      const currentTime = document.getElementById('backgroudAudio_audio').currentTime;
+      const duration = document.getElementById('backgroudAudio_audio').duration;
+      const audioUrl = $('#backgroudAudio_source').attr("src");
+      if(!paused && Math.abs(currentTime - audioPrevTime) > 3) {
+        audioCurrentTimePercent = (currentTime / duration) * 100;
+        sig.send({action:'audioSeekTo', room: $('#txt_room').val(), display: conf.display, data: { audioUrl, currentTime, duration, position: audioCurrentTimePercent } })
+        console.log("[audio_ontimeupdate] audioSeekTo", { currentTime, audioPrevTime });
+        audioPrevTime = currentTime;
+      }
+    }
+
+    function audio_onpause() {
+      sig.send({action:'pauseAudio', room: $('#txt_room').val(), display: conf.display, data: {}})
+    }
+
+    function audio_onplay() {
+      const currentTime = document.getElementById('backgroudAudio_audio').currentTime;
+      const duration = document.getElementById('backgroudAudio_audio').duration;
+      const audioUrl = $('#backgroudAudio_source').attr("src");
+      audioCurrentTimePercent = (currentTime / duration) * 100;
+      sig.send({action:'audioSeekTo', room: $('#txt_room').val(), display: conf.display, data: { audioUrl, currentTime, duration, position: audioCurrentTimePercent } })
+      console.log("[audio_ontimeupdate] audioSeekTo", { currentTime, audioPrevTime });
+      audioPrevTime = currentTime;
+    }
+
+    document.getElementById('backgroudAudio_audio').ontimeupdate = audio_ontimeupdate;
+    document.getElementById('backgroudAudio_audio').onpause = audio_onpause;
+    document.getElementById('backgroudAudio_audio').onplay = audio_onplay;
+
   });
 </script>
