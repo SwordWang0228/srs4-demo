@@ -90,8 +90,9 @@ SrsError.prototype.constructor = SrsError;
      //      webrtc://r.ossrs.net/live/livestream?token=xxx
      self.publish = async function (url, video, audio, streamEx) {
          var conf = self.__internal.prepareUrl(url);
+         // TODO: 自动适配 self.pc.addTransceiver
          self.pc.addTransceiver("audio", {direction: "sendonly"});    
-        //  self.pc.addTransceiver("video", {direction: "sendonly"});
+         self.pc.addTransceiver("video", {direction: "sendonly"});
          
          if (audio) {
              var stream = await navigator.mediaDevices.getUserMedia(self.constraintsMic);
@@ -205,7 +206,7 @@ SrsError.prototype.constructor = SrsError;
          defaultPath: '/rtc/v1/publish/',
          prepareUrl: function (webrtcUrl) {
              var urlObject = self.__internal.parse(webrtcUrl);
- 
+
              // If user specifies the schema, use it as API schema.
              var schema = urlObject.user_query.schema;
              schema = schema ? schema + ':' : window.location.protocol;
@@ -379,8 +380,9 @@ SrsError.prototype.constructor = SrsError;
      //      webrtc://r.ossrs.net/live/livestream?token=xxx
      self.play = async function(url, video, audio) {
          var conf = self.__internal.prepareUrl(url);
+         // TODO: 自动适配 self.pc.addTransceiver
          self.pc.addTransceiver("audio", {direction: "recvonly"});    
-        //  self.pc.addTransceiver("video", {direction: "recvonly"});    
+         self.pc.addTransceiver("video", {direction: "recvonly"});    
          
          var offer = await self.pc.createOffer();
          await self.pc.setLocalDescription(offer);
