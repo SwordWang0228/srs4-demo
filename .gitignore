@@ -5,4 +5,5 @@
 
 
 .idea/
-/srsConf/srs.conf
+srsConf/srs.conf
+html/
