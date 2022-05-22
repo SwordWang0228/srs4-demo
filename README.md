@@ -5,6 +5,7 @@
 - 播放器
    - [EasyPlayer](https://github.com/tsingsee/EasyPlayer.js/)
    - [jessibuca](https://jessibuca.com)
+   - [jessibuca-demo](https://github.com/bosscheng/jessibuca-demo/tree/v3)
 
 ## srs4-demo 启动步骤
 
