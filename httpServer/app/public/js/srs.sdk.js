@@ -91,7 +91,7 @@ SrsError.prototype.constructor = SrsError;
      self.publish = async function (url, video, audio, streamEx) {
          var conf = self.__internal.prepareUrl(url);
          self.pc.addTransceiver("audio", {direction: "sendonly"});    
-         self.pc.addTransceiver("video", {direction: "sendonly"});
+        //  self.pc.addTransceiver("video", {direction: "sendonly"});
          
          if (audio) {
              var stream = await navigator.mediaDevices.getUserMedia(self.constraintsMic);
@@ -380,7 +380,7 @@ SrsError.prototype.constructor = SrsError;
      self.play = async function(url, video, audio) {
          var conf = self.__internal.prepareUrl(url);
          self.pc.addTransceiver("audio", {direction: "recvonly"});    
-         self.pc.addTransceiver("video", {direction: "recvonly"});    
+        //  self.pc.addTransceiver("video", {direction: "recvonly"});    
          
          var offer = await self.pc.createOffer();
          await self.pc.setLocalDescription(offer);
