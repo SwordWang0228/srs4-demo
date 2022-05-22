@@ -234,7 +234,8 @@
 
     // get the vhost and port to set the default url.
     // url set to: http://localhost:8080/live/livestream.flv
-    srs_init_flv("#txt_url");
+    // srs_init_flv("#txt_url");
+    $("#txt_url").val("https://srs4.openjianghu.org/live/livestream.flv");
 
     if (query.autostart === "true") {
         $('#video_player').prop('muted', true);

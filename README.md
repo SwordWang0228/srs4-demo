@@ -1,6 +1,7 @@
 # srs4-demo
 
 - [DVR](https://gitee.com/winlinvip/srs.oschina/wikis/v3_CN_DVR?sort_id=1701916)
+   - [DVR Api](https://gitee.com/winlinvip/srs.oschina/wikis/v3_CN_HTTPApi)
 - 播放器
    - [EasyPlayer](https://github.com/tsingsee/EasyPlayer.js/)
    - [jessibuca](https://jessibuca.com)
