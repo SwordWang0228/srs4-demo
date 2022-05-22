@@ -53,7 +53,8 @@ SrsError.prototype.constructor = SrsError;
      self.constraintsDesktopHd = {
          audio:false,
          video:{
-             width: {ideal:1280, max:1280},
+             width: {ideal:1280, max:1280}, // ====>tlb
+            //  width: {ideal:1980, max:1280},  ===> 1080
              frameRate:{ideal:15,max:15}
          }
      }
@@ -61,7 +62,7 @@ SrsError.prototype.constructor = SrsError;
      self.constraintsDesktopLd = {
          audio:false,
          video:{
-             width: {ideal:640, max:1280},
+             width: {ideal:640, max:1280}, 
              frameRate:{ideal:15,max:15}
          }
      }
@@ -125,7 +126,7 @@ SrsError.prototype.constructor = SrsError;
 
          if (video) {
              if(isHd == true){
-                 var streamDesktop = await navigator.mediaDevices.getDisplayMedia(self.constraintsDesktopHd); 
+                var streamDesktop = await navigator.mediaDevices.getDisplayMedia(self.constraintsDesktopHd); 
              }else{
                 var streamDesktop = await navigator.mediaDevices.getDisplayMedia(self.constraintsDesktopLd); 
              }
