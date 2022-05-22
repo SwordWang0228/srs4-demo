@@ -1,5 +1,10 @@
 # srs4-demo
 
+- [DVR](https://gitee.com/winlinvip/srs.oschina/wikis/v3_CN_DVR?sort_id=1701916)
+- 播放器
+   - [EasyPlayer](https://github.com/tsingsee/EasyPlayer.js/)
+   - [jessibuca](https://jessibuca.com)
+
 ## srs4-demo 启动步骤
 
 1. 启动srs4服务（非必要，可以直接使用 开源江湖的srs服务）
