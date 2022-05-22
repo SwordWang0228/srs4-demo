@@ -381,10 +381,14 @@ SrsError.prototype.constructor = SrsError;
      //      webrtc://r.ossrs.net/live/livestream?token=xxx
      self.play = async function(url, video, audio) {
          var conf = self.__internal.prepareUrl(url);
-         // TODO: 自动适配 self.pc.addTransceiver
          self.pc.addTransceiver("audio", {direction: "recvonly"});    
          self.pc.addTransceiver("video", {direction: "recvonly"});    
-         
+        //  if (audio) {
+        //     self.pc.addTransceiver("audio", {direction: "recvonly"});    
+        //  }
+        //  if (video) {
+        //     self.pc.addTransceiver("video", {direction: "recvonly"});    
+        //  }
          var offer = await self.pc.createOffer();
          await self.pc.setLocalDescription(offer);
          var session = await new Promise(function(resolve, reject) {

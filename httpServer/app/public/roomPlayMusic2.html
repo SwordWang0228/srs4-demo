@@ -23,7 +23,7 @@
       padding: 3px 10px;
     }
     #backgroudAudio {
-      /* display: none; */
+      display: none;
     }
   </style>
   <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
@@ -48,8 +48,8 @@
           <li><a href="one2oneVideo.html">一对一音视频</a></li>
           <li><a href="roomAudio.html">多人纯音频</a></li>
           <li><a href="roomVideo.html">多人音视频</a></li>
-          <li><a href="roomPlayMusic.html">多人纯音频+音乐</a></li>
-          <li class="active"><a href="roomPlayMusic2.html">多人纯音频+音乐2</a></li>
+          <li class="active"><a href="roomPlayMusic.html">多人纯音频+音乐</a></li>
+          <li><a href="roomPlayMusic2.html">多人纯音频+音乐2</a></li>
           <li class="srs_ignore">
             <a href="https://github.com/ossrs/signaling">
               <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/ossrs/signaling?style=social">
@@ -92,13 +92,8 @@
   </div>
   <div id="backgroudAudio">
     <audio id="backgroudAudio_audio" controls>
-      <source id="backgroudAudio_source" src="http://127.0.0.1:7015/public/audio/The%20Trumpeteers%20-%20Little%20Wooden%20Church.mp3">
+      <source id="backgroudAudio_source" type="audio/mpeg">
     </audio>
-  </div>
-  <div id="backgroudVideo">
-    <video id="backgroudVideo_video" controls>
-      <source id="backgroudVideo_source" src="http://127.0.0.1:7015/public/video/echo-hereweare.mp4">
-    </video>
   </div>
   <div id="musicBoxList">
     <li>Jackson F. Smith - Cantina Rag.mp3</li>
@@ -134,33 +129,6 @@
         if (msg.event === 'publish') {
           if (msg.peer && msg.peer.publishing && msg.peer.display !== display) {
             startPlay(host, room, msg.peer.display, msg.peer);
-          }
-        }
-
-
-        if (msg.event === 'audioSeekTo') {
-          if (msg.peer && msg.peer.display !== display) {
-            if (!audioContext) {
-              startPlayAudio(msg.data.audioUrl);
-            }
-            if (audioContext.paused) {
-              audioContext.play();
-            }
-            seekToAudio(msg.data);
-          }
-        }
-
-        if (msg.event === 'audioPlay') {
-          if (msg.peer && msg.peer.display !== display) {
-            startPlayAudio(msg.data.audioUrl);
-          }
-        }
-
-        if (msg.event === 'pauseAudio') {
-          if (msg.peer && msg.peer.display !== display) {
-            if(audioContext) {
-              audioContext.pause();
-            }
           }
         }
 
@@ -210,7 +178,6 @@
 
       var url = 'webrtc://' + host + '/' + room + '/' + display + (conf.query || '');
 
-
       $('#rtc_media_publisher').show();
       $('#publisher').show();
 
@@ -221,20 +188,19 @@
       publisher = new SrsRtcPublisherAsync();
 
       $('#rtc_media_publisher').prop('srcObject', publisher.stream);
-      // const {publishVideo, publishAudio} = checkPublisherStatus()
+      //   const {publishVideo, publishAudio} = checkPublisherStatus()
       // console.log('publishVideo, publishAudio---', publishVideo, publishAudio)
-      
-      const streamEx = document.getElementById('backgroudAudio_audio').captureStream();
-      // const streamEx = document.getElementById('backgroudVideo_video').captureStream();
-      // return publisher.publish(url, is_video_push, is_audio_push, streamEx).then(function(session){
-      return publisher.publish(url, false, false, streamEx).then(function(session){
+      return publisher.publish(url, is_video_push, is_audio_push).then(function(session){
         $('#self').text('Self: ' + url);
         //   console.log('getSenders---', publisher.pc.getSenders())
         //   console.log('getVideoTracks---', publisher.stream.getVideoTracks())
         //   console.log('getAudioTracks---', publisher.stream.getAudioTracks())
       }).catch(function (reason) {
         publisher.close();
+
         $('#rtc_media_publisher').hide();
+
+
         console.log(reason.message);
       });
     };
@@ -315,7 +281,9 @@
 
     $("#btn_start").click(startDemo);
     $("#btn_publish_video").click(publishVideo);
-    $("#btn_publish_audio").click(publishAudio);
+    $("#btn_publish_audio").click(() =>{
+      publishAudio();
+    });
     if (conf.autostart) {
       startDemo();
     }
@@ -326,109 +294,13 @@
     $(musicBoxList).children('li').on('click', (event) => {
       var filename = $(event.target).text();
       const audioUrl = location.origin + '/public/audio/' + filename
-      // sig.send({action:'audioPlay', room: $('#txt_room').val(), display: conf.display, data: { audioUrl} })
-      startPlayAudio(audioUrl, true);
+      $('#backgroudAudio').show();
+      $('#backgroudAudio_source').attr("src", audioUrl);
+      $('#backgroudAudio_audio').load();
+      $('#backgroudAudio_audio').trigger('play');
     })
 
     $("#btn_start_music").click(selectMusic)
-
-    // function initAudio() {
-    //   audioContext = new Audio;
-    //   audioContext.oncanplay = function () {
-    //     audioContext.play().then((value) => {
-    //     }).catch(async (err) => {
-    //       // 不支持自动播放
-    //     });
-    //   };
-    //   audioContext.onplay = function () {
-    //   };
-    //   audioContext.ontimeupdate = function () {
-    //     if(Math.abs(audioContext.currentTime - audioPrevTime) > 2000) {
-    //       audioCurrentTimePercent = (audioContext.currentTime / audioContext.duration) * 100;
-    //       sig.send({action:'audioSeekTo', room: $('#txt_room').val(), display: conf.display, position: audioCurrentTimePercent})
-    //     }
-    //     audioPrevTime = audioContext.currentTime;
-    //   };
-    //   audioContext.onpause = function () {
-    //     sig.send({action:'pauseAudio', room: $('#txt_room').val(), display: conf.display})
-    //   };
-    //   audioContext.onended = function () {
-    //   };
-    // }
-
-    // 开始播放音乐
-    function startPlayAudio(audioUrl, showAudio=false) {
-      if (showAudio === true) {
-        $('#backgroudAudio').show();
-        $('#backgroudAudio_source').attr("src", audioUrl);
-        $('#backgroudAudio_audio').load();
-        $('#backgroudAudio_audio').trigger('play');
-      } else {
-        if(!audioContext) {
-          audioContext = new Audio(audioUrl);
-          audioContext.play();
-        } else {
-          audioContext.pause();
-          audioContext.src = audioUrl;
-          audioContext.play();
-        }
-      }
-    }
-
-    // 音乐位置跳转
-    async function seekToAudio({audioUrl, currentTime, duration, position}) {
-      if (audioContext) {
-        const newDuration = audioContext.duration * (position / 100);
-        if ('fastSeek' in audioContext) {
-          await audioContext.fastSeek(newDuration);
-        } else {
-          const canFastSeek = Array(audioContext.seekable.length)
-              .fill(0)
-              .some((v, i) => {
-                return (
-                    newDuration > audioContext.seekable.start(i) &&
-                    newDuration < audioContext.seekable.end(i)
-                );
-              });
-          if (canFastSeek) {
-            audioContext.currentTime = newDuration;
-          }
-        }
-      }
-    }
-
-    function audio_ontimeupdate() {
-      const paused = document.getElementById('backgroudAudio_audio').paused;
-      const currentTime = document.getElementById('backgroudAudio_audio').currentTime;
-      const duration = document.getElementById('backgroudAudio_audio').duration;
-      const audioUrl = $('#backgroudAudio_source').attr("src");
-      if(!paused && Math.abs(currentTime - audioPrevTime) > 3) {
-        audioCurrentTimePercent = (currentTime / duration) * 100;
-        sig.send({action:'audioSeekTo', room: $('#txt_room').val(), display: conf.display, data: { audioUrl, currentTime, duration, position: audioCurrentTimePercent } })
-        console.log("[audio_ontimeupdate] audioSeekTo", { currentTime, audioPrevTime });
-        audioPrevTime = currentTime;
-      }
-    }
-
-    function audio_onpause() {
-      sig.send({action:'pauseAudio', room: $('#txt_room').val(), display: conf.display, data: {}})
-    }
-
-    function audio_onplay() {
-      const currentTime = document.getElementById('backgroudAudio_audio').currentTime;
-      const duration = document.getElementById('backgroudAudio_audio').duration;
-      const audioUrl = $('#backgroudAudio_source').attr("src");
-      audioCurrentTimePercent = (currentTime / duration) * 100;
-      sig.send({action:'audioSeekTo', room: $('#txt_room').val(), display: conf.display, data: { audioUrl, currentTime, duration, position: audioCurrentTimePercent } })
-      console.log("[audio_ontimeupdate] audioSeekTo", { currentTime, audioPrevTime });
-      audioPrevTime = currentTime;
-    }
-
-    // document.getElementById('backgroudAudio_audio').ontimeupdate = audio_ontimeupdate;
-    // document.getElementById('backgroudAudio_audio').onpause = audio_onpause;
-    // document.getElementById('backgroudAudio_audio').onplay = audio_onplay;
-
-    // document.getElementById('backgroudAudio_audio').captureStream
 
   });
 </script>
