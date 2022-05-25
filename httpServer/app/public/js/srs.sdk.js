@@ -152,7 +152,7 @@ SrsError.prototype.constructor = SrsError;
              console.log("Generated offer: ", data);
  
             // Tip: 使用/srs/httpApiProxy 转发 请求到 srs http_api
-            const requestUrl = conf.urlObject.vhost === "srs4.openjianghu.org" ? `https://srs4.openjianghu.org/srs/httpApiProxy` : '/srs/httpApiProxy';
+            const requestUrl = conf.urlObject.vhost === "srs.openjianghu.org" ? `https://srs.openjianghu.org/srs/httpApiProxy` : '/srs/httpApiProxy';
             axios.post(requestUrl, { url: conf.apiUrl, param: data })
                 .then(function (response) {
                     console.log("Got answer: ", response.data);
@@ -394,7 +394,7 @@ SrsError.prototype.constructor = SrsError;
              console.log("Generated offer: ", data);
 
             // Tip: 使用/srs/httpApiProxy 转发 请求到 srs http_api
-            const requestUrl = conf.urlObject.vhost === "srs4.openjianghu.org" ? `https://srs4.openjianghu.org/srs/httpApiProxy` : '/srs/httpApiProxy';
+            const requestUrl = conf.urlObject.vhost === "srs.openjianghu.org" ? `https://srs.openjianghu.org/srs/httpApiProxy` : '/srs/httpApiProxy';
             axios.post(requestUrl, { url: conf.apiUrl, param: data })
                 .then(function (response) {
                     console.log("Got answer: ", response.data);

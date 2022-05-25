@@ -97,7 +97,7 @@ function SrsRtcSignalingParse(location) {
     query = query? '?' + query : null;
     
     // const defaultSrsHost = location.hostname;
-    const defaultSrsHost = "srs4.openjianghu.org";
+    const defaultSrsHost = "srs.openjianghu.org";
 
     let wsSchema = location.href.split('wss=')[1];
     wsSchema = wsSchema? wsSchema.split('&')[0] : (location.protocol === 'http:'? 'ws' : 'wss');

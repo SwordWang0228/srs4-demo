@@ -94,7 +94,7 @@ function build_default_rtc_url(query) {
     console.log('?schema=http|https to overwrite WebRTC API protocol.');
 
     // const defaultSrsHost = window.location.hostname;
-    const defaultSrsHost = "srs4.openjianghu.org";
+    const defaultSrsHost = "srs.openjianghu.org";
 
     var server = (!query.server)? defaultSrsHost:query.server;
     var vhost = (!query.vhost)? defaultSrsHost:query.vhost;
