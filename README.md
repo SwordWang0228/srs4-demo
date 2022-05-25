@@ -58,3 +58,9 @@ npm run dev
 # 启动srs 服务
 docker run -d --name srs4-demo-srs -v=/www/wwwroot/srs4-demo/srsConf/srs.conf:/usr/local/srs/conf/srs.conf -v=/www/wwwroot/srs4-demo/dvr/:/usr/local/srs/objs/dvr/ -p 11935:11935 -p 11985:11985 -p 18080:18080 --env CANDIDATE="47.242.40.14" -p 18000:18000/udp ossrs/srs:v4.0-b10 ./objs/srs -c conf/srs.conf
 ```
+
+### 转码配置
+转码配置为了解决Jessibuca软解失败，导致ios设备无法播放的问题。
+目前rtc流的编码采用Constrained Baseline。
+
+https://github.com/ossrs/srs/wiki/v4_CN_SampleFFMPEG
