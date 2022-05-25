@@ -23,7 +23,6 @@
 > 注意: 
 >  - 修改srsConf/srs.conf后需要手动 重启 srs4-demo-srs ===》`docker restart srs4-demo-srs`
 >  - 进入docker容器: `docker exec -it --user root srs4-demo-srs /bin/bash`
->  - docker run -d --name srs4-demo-srs -v=/www/wwwroot/srs4-demo/srsConf/srs.conf:/usr/local/srs/conf/srs.conf -v=/www/wwwroot/srs4-demo/dvr/:/usr/local/srs/objs/dvr/ -p 11935:11935 -p 11985:11985 -p 18080:18080 --env CANDIDATE="47.243.6.203" -p 18000:18000/udp ossrs/srs:v4.0-b10 ./objs/srs -c conf/srs.conf
 
 ## 启动httpServer
 
