@@ -57,6 +57,11 @@ npm run dev
 
 # 启动srs 服务
 docker run -d --name srs4-demo-srs -v=/www/wwwroot/srs4-demo/srsConf/srs.conf:/usr/local/srs/conf/srs.conf -v=/www/wwwroot/srs4-demo/dvr/:/usr/local/srs/objs/dvr/ -p 11935:11935 -p 11985:11985 -p 18080:18080 --env CANDIDATE="47.242.40.14" -p 18000:18000/udp ossrs/srs:v4.0-b10 ./objs/srs -c conf/srs.conf
+
+# 使用本地镜像，启动 srs_webrtc 服务
+docker load --input srs_webrtc.tar
+
+docker run -d --name srs_webrtc -v=/www/wwwroot/srs4-demo/srsConf/srs.conf:/usr/local/srs/conf/srs.conf -v=/www/wwwroot/srs4-demo/dvr/:/usr/local/srs/objs/dvr/ -p 11935:11935 -p 11985:11985 -p 18080:18080 --env CANDIDATE="47.242.40.14" -p 18000:18000/udp srs_webrtc:v1.0 ./objs/srs -c conf/srs.conf
 ```
 
 ### 转码配置
@@ -64,3 +69,5 @@ docker run -d --name srs4-demo-srs -v=/www/wwwroot/srs4-demo/srsConf/srs.conf:/u
 目前rtc流的编码采用Constrained Baseline。
 
 https://github.com/ossrs/srs/wiki/v4_CN_SampleFFMPEG
+
+
